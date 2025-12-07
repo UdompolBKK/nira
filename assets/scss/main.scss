@@ -1,0 +1,97 @@
+/* Remove outline/focus ring from all buttons and links on hover/focus */
+button:focus, button:active, button:hover,
+a:focus, a:active, a:hover,
+.btn:focus, .btn:active, .btn:hover {
+  outline: none !important;
+  box-shadow: none !important;
+}
+@import './variables';
+@import './mixins';
+
+/* Global Styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Prompt', 'Inter', 'Segoe UI', sans-serif;
+  color: $text-primary;
+  background-color: $bg-body;
+}
+
+/* Links and interactive elements should be grayscale */
+a, a:visited {
+  color: $text-primary;
+}
+
+/* Buttons: use neutral fills and dark text */
+button, .btn {
+  background-color: $bg-card;
+  color: $text-primary;
+  border: 1px solid $border-color;
+}
+
+/* Remove colorful focus rings; use subtle gray outline */
+:focus {
+  outline: 2px solid $text-secondary;
+  outline-offset: 2px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+  font-family: 'Prompt', sans-serif;
+}
+
+p {
+  line-height: 1.6;
+}
+
+/* Links */
+a {
+  color: $primary-color;
+  text-decoration: none;
+  transition: $transition;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+/* Buttons */
+button, [role="button"] {
+  font-family: 'Prompt', sans-serif;
+  cursor: pointer;
+  border: none;
+  border-radius: $border-radius;
+  transition: $transition;
+}
+
+/* Inputs */
+input, textarea, select {
+  font-family: 'Prompt', sans-serif;
+  border-radius: $border-radius;
+  border: 1px solid #e5e7eb;
+  padding: 0.75rem;
+  transition: $transition;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-color;
+    box-shadow: 0 0 0 3px rgba(15, 15, 16, 0.06);
+  }
+}
+
+/* Images */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}

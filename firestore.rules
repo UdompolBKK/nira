@@ -1,0 +1,221 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================
+    // Helper Functions
+    // ============================================
+
+    // ตรวจสอบว่า login แล้ว
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // ตรวจสอบว่าเป็นเจ้าของ
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ตรวจสอบว่าเป็น admin
+    function isAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'super-admin'];
+    }
+
+    // ตรวจสอบว่าเป็น super-admin
+    function isSuperAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super-admin';
+    }
+
+    // ตรวจสอบว่าเป็น premium user
+    function isPremium() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isPremium == true;
+    }
+
+    // ============================================
+    // Users Collection
+    // ============================================
+    match /users/{userId} {
+      // อ่านได้ทุกคน (สำหรับดู profile)
+      allow read: if true;
+
+      // สร้างได้เมื่อ login และ userId ตรงกับ auth.uid
+      allow create: if isOwner(userId);
+
+      // แก้ไขได้เฉพาะเจ้าของ หรือ admin
+      allow update: if isOwner(userId) || isAdmin();
+
+      // ลบได้เฉพาะ super-admin
+      allow delete: if isSuperAdmin();
+    }
+
+    // ============================================
+    // Posts Collection (Diary entries)
+    // ============================================
+    match /posts/{postId} {
+      // อ่านได้ถ้า:
+      // 1. โพสต์เป็น public
+      // 2. เป็นเจ้าของโพสต์
+      // 3. เป็น admin
+      // 4. เป็นเพื่อนและโพสต์ visibility = friends
+      allow read: if resource.data.visibility == 'public'
+                  || isOwner(resource.data.userId)
+                  || isAdmin();
+
+      // สร้างได้เมื่อ login
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid;
+
+      // แก้ไขได้เฉพาะเจ้าของ
+      allow update: if isOwner(resource.data.userId);
+
+      // ลบได้เฉพาะเจ้าของ หรือ admin
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    // ============================================
+    // Comments Collection
+    // ============================================
+    match /comments/{commentId} {
+      // อ่านได้ทุกคน
+      allow read: if true;
+
+      // สร้างได้เมื่อ login
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid;
+
+      // แก้ไขได้เฉพาะเจ้าของ
+      allow update: if isOwner(resource.data.userId);
+
+      // ลบได้เฉพาะเจ้าของ หรือ admin
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    // ============================================
+    // Emotions/Reactions Collection
+    // ============================================
+    match /emotions/{emotionId} {
+      // อ่านได้ทุกคน
+      allow read: if true;
+
+      // สร้าง/แก้ไข/ลบ ได้เมื่อ login
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isOwner(resource.data.userId);
+    }
+
+    // ============================================
+    // Friends Collection
+    // ============================================
+    match /friends/{friendshipId} {
+      // อ่านได้เฉพาะคนที่เกี่ยวข้อง
+      allow read: if isAuthenticated() &&
+                  (resource.data.userId == request.auth.uid ||
+                   resource.data.friendId == request.auth.uid);
+
+      // สร้างได้เมื่อ login
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid;
+
+      // แก้ไข/ลบ ได้เฉพาะคนที่เกี่ยวข้อง
+      allow update, delete: if isAuthenticated() &&
+                            (resource.data.userId == request.auth.uid ||
+                             resource.data.friendId == request.auth.uid);
+    }
+
+    // ============================================
+    // Friend Requests Collection
+    // ============================================
+    match /friendRequests/{requestId} {
+      // อ่านได้เฉพาะผู้ส่งหรือผู้รับ
+      allow read: if isAuthenticated() &&
+                  (resource.data.fromUserId == request.auth.uid ||
+                   resource.data.toUserId == request.auth.uid);
+
+      // สร้างได้เมื่อ login
+      allow create: if isAuthenticated()
+                    && request.resource.data.fromUserId == request.auth.uid;
+
+      // แก้ไข/ลบ ได้เฉพาะผู้ส่งหรือผู้รับ
+      allow update, delete: if isAuthenticated() &&
+                            (resource.data.fromUserId == request.auth.uid ||
+                             resource.data.toUserId == request.auth.uid);
+    }
+
+    // ============================================
+    // Bot Chats Collection
+    // ============================================
+    match /botChats/{chatId} {
+      // อ่าน/เขียน ได้เฉพาะเจ้าของ
+      allow read, write: if isOwner(resource.data.userId) ||
+                         (isAuthenticated() && request.resource.data.userId == request.auth.uid);
+    }
+
+    // ============================================
+    // Subscriptions Collection
+    // ============================================
+    match /subscriptions/{subId} {
+      // อ่านได้เฉพาะเจ้าของ หรือ admin
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+
+      // สร้าง/แก้ไข ได้เฉพาะ admin (Stripe webhook จะใช้ admin SDK)
+      allow create, update: if isAdmin();
+
+      // ลบได้เฉพาะ super-admin
+      allow delete: if isSuperAdmin();
+    }
+
+    // ============================================
+    // Notifications Collection
+    // ============================================
+    match /notifications/{notificationId} {
+      // อ่าน/แก้ไข ได้เฉพาะเจ้าของ
+      allow read, update: if isOwner(resource.data.userId);
+
+      // สร้างได้ทุกคนที่ login (สำหรับส่ง notification ให้คนอื่น)
+      allow create: if isAuthenticated();
+
+      // ลบได้เฉพาะเจ้าของ
+      allow delete: if isOwner(resource.data.userId);
+    }
+
+    // ============================================
+    // Reports Collection (รายงานโพสต์/ผู้ใช้ที่มีปัญหา)
+    // ============================================
+    match /reports/{reportId} {
+      // อ่านได้เฉพาะ admin
+      allow read: if isAdmin();
+
+      // สร้างได้เมื่อ login
+      allow create: if isAuthenticated()
+                    && request.resource.data.reporterId == request.auth.uid;
+
+      // แก้ไข/ลบ ได้เฉพาะ admin
+      allow update, delete: if isAdmin();
+    }
+
+    // ============================================
+    // Admin-only Collections
+    // ============================================
+    match /adminLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /analytics/{docId} {
+      allow read: if isAdmin();
+      allow write: if isAuthenticated(); // สำหรับ track pageviews
+    }
+
+    // ============================================
+    // Page Views Collection
+    // ============================================
+    match /pageviews/{viewId} {
+      allow read: if isAdmin();
+      allow create: if true; // ทุกคนสามารถบันทึก pageview ได้
+      allow update, delete: if isAdmin();
+    }
+  }
+}
