@@ -3,8 +3,8 @@
     <nav class="mx-auto max-w-full px-4 py-4 md:px-8">
       <div class="flex items-center justify-between">
         <!-- Logo -->
-          <NuxtLink to="/" class="flex items-center gap-2 text-2xl font-bold">
-            <span class="text-2xl">📔</span>
+          <NuxtLink to="/" class="flex items-center gap-2">
+            <img src="/nira.png" alt="Nira" class="h-10 w-auto" />
           </NuxtLink>
 
         <!-- Navigation Links -->

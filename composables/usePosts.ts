@@ -1,25 +1,5 @@
-// composables/usePosts.ts
-// CRUD operations for diary posts
-
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  startAfter,
-  Timestamp,
-  increment,
-  onSnapshot,
-  type DocumentData,
-  type QueryDocumentSnapshot
-} from 'firebase/firestore'
+// composables/usePosts.ts - Using API with Firebase Admin SDK
+import { ref } from 'vue'
 
 // Mood categories for diary entries
 export type MoodCategory = 'good' | 'normal' | 'bad' | 'worst' | 'critical'
@@ -62,68 +42,60 @@ export interface CreatePostData {
 }
 
 export const usePosts = () => {
-  const { firestore } = useFirebase()
   const { user } = useAuth()
 
   const posts = ref<Post[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
-  const lastDoc = ref<QueryDocumentSnapshot<DocumentData> | null>(null)
   const hasMore = ref(true)
+  const lastPostDate = ref<string | null>(null)
 
-  // Convert Firestore doc to Post
-  const docToPost = (doc: QueryDocumentSnapshot<DocumentData>): Post => {
-    const data = doc.data()
-    return {
-      id: doc.id,
-      userId: data.userId,
-      authorName: data.authorName || 'ไม่ระบุชื่อ',
-      authorSlug: data.authorSlug,
-      authorPhoto: data.authorPhoto,
-      content: data.content,
-      excerpt: data.excerpt || data.content?.replace(/<[^>]*>/g, '').substring(0, 150),
-      visibility: data.visibility || 'public',
-      isLocked: data.isLocked || false,
-      tags: data.tags || [],
-      moodCategory: data.moodCategory || 'normal',
-      likeCount: data.likeCount || 0,
-      sadCount: data.sadCount || 0,
-      happyCount: data.happyCount || 0,
-      commentCount: data.commentCount || 0,
-      viewCount: data.viewCount || 0,
-      createdAt: data.createdAt?.toDate() || new Date(),
-      updatedAt: data.updatedAt?.toDate() || new Date()
+  // Get auth token for API calls
+  const getAuthToken = async (): Promise<string | null> => {
+    const firebaseUser = user.value?._firebaseUser
+    if (!firebaseUser) return null
+    try {
+      return await firebaseUser.getIdToken()
+    } catch {
+      return null
     }
   }
 
+  // Convert API response to Post
+  const convertPost = (data: any): Post => ({
+    id: data.id,
+    userId: data.userId,
+    authorName: data.authorName || 'ไม่ระบุชื่อ',
+    authorSlug: data.authorSlug,
+    authorPhoto: data.authorPhoto,
+    content: data.content,
+    excerpt: data.excerpt || data.content?.replace(/<[^>]*>/g, '').substring(0, 150),
+    visibility: data.visibility || 'public',
+    isLocked: data.isLocked || false,
+    tags: data.tags || [],
+    moodCategory: data.moodCategory || 'normal',
+    likeCount: data.likeCount || 0,
+    sadCount: data.sadCount || 0,
+    happyCount: data.happyCount || 0,
+    commentCount: data.commentCount || 0,
+    viewCount: data.viewCount || 0,
+    createdAt: new Date(data.createdAt),
+    updatedAt: new Date(data.updatedAt)
+  })
+
   // Get public posts (for browse page)
   const getPublicPosts = async (limitCount = 10, loadMore = false) => {
-    if (!firestore) return []
-
     loading.value = true
     error.value = null
 
     try {
-      const postsRef = collection(firestore, 'posts')
-      let q = query(
-        postsRef,
-        where('visibility', '==', 'public'),
-        orderBy('createdAt', 'desc'),
-        limit(limitCount)
-      )
-
-      if (loadMore && lastDoc.value) {
-        q = query(
-          postsRef,
-          where('visibility', '==', 'public'),
-          orderBy('createdAt', 'desc'),
-          startAfter(lastDoc.value),
-          limit(limitCount)
-        )
+      const params: Record<string, string> = { limit: String(limitCount) }
+      if (loadMore && lastPostDate.value) {
+        params.startAfter = lastPostDate.value
       }
 
-      const snapshot = await getDocs(q)
-      const newPosts = snapshot.docs.map(docToPost)
+      const response = await $fetch<{ posts: any[], hasMore: boolean }>('/api/posts', { params })
+      const newPosts = response.posts.map(convertPost)
 
       if (loadMore) {
         posts.value = [...posts.value, ...newPosts]
@@ -131,60 +103,42 @@ export const usePosts = () => {
         posts.value = newPosts
       }
 
-      lastDoc.value = snapshot.docs[snapshot.docs.length - 1] || null
-      hasMore.value = snapshot.docs.length === limitCount
+      if (newPosts.length > 0) {
+        lastPostDate.value = newPosts[newPosts.length - 1].createdAt.toISOString()
+      }
+      hasMore.value = response.hasMore
 
       return newPosts
     } catch (err: any) {
-      error.value = err.message
+      error.value = err.data?.message || err.message
       return []
     } finally {
       loading.value = false
     }
   }
 
-  // Get featured posts (likes >= 50)
+  // Get featured posts (likes >= 50) - simplified for now
   const getFeaturedPosts = async (limitCount = 5) => {
-    if (!firestore) return []
-
     try {
-      const postsRef = collection(firestore, 'posts')
-      const q = query(
-        postsRef,
-        where('visibility', '==', 'public'),
-        where('likeCount', '>=', 50),
-        orderBy('likeCount', 'desc'),
-        limit(limitCount)
-      )
-
-      const snapshot = await getDocs(q)
-      return snapshot.docs.map(docToPost)
+      const response = await $fetch<{ posts: any[] }>('/api/posts', {
+        params: { limit: String(limitCount) }
+      })
+      return response.posts.map(convertPost).filter(p => p.likeCount >= 50)
     } catch (err: any) {
       console.error('Error getting featured posts:', err)
       return []
     }
   }
 
-  // Get trending posts (top likes in 24h)
+  // Get trending posts (simplified)
   const getTrendingPosts = async (limitCount = 10) => {
-    if (!firestore) return []
-
     try {
-      const yesterday = new Date()
-      yesterday.setDate(yesterday.getDate() - 1)
-
-      const postsRef = collection(firestore, 'posts')
-      const q = query(
-        postsRef,
-        where('visibility', '==', 'public'),
-        where('createdAt', '>=', Timestamp.fromDate(yesterday)),
-        orderBy('createdAt', 'desc'),
-        orderBy('likeCount', 'desc'),
-        limit(limitCount)
-      )
-
-      const snapshot = await getDocs(q)
-      return snapshot.docs.map(docToPost)
+      const response = await $fetch<{ posts: any[] }>('/api/posts', {
+        params: { limit: String(limitCount * 2) }
+      })
+      return response.posts.map(convertPost)
+        .sort((a, b) => b.likeCount - a.likeCount)
+        .slice(0, limitCount)
     } catch (err: any) {
       console.error('Error getting trending posts:', err)
       return []
@@ -193,23 +147,25 @@ export const usePosts = () => {
 
   // Get user's own posts
   const getMyPosts = async (limitCount = 20) => {
-    if (!firestore || !user.value) return []
+    if (!user.value) return []
 
     loading.value = true
     try {
-      const postsRef = collection(firestore, 'posts')
-      const q = query(
-        postsRef,
-        where('userId', '==', user.value.uid),
-        orderBy('createdAt', 'desc'),
-        limit(limitCount)
-      )
+      const token = await getAuthToken()
+      if (!token) {
+        error.value = 'กรุณาเข้าสู่ระบบ'
+        return []
+      }
 
-      const snapshot = await getDocs(q)
-      posts.value = snapshot.docs.map(docToPost)
+      const response = await $fetch<{ posts: any[] }>('/api/posts/my', {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { limit: String(limitCount) }
+      })
+
+      posts.value = response.posts.map(convertPost)
       return posts.value
     } catch (err: any) {
-      error.value = err.message
+      error.value = err.data?.message || err.message
       return []
     } finally {
       loading.value = false
@@ -218,64 +174,39 @@ export const usePosts = () => {
 
   // Get single post by ID
   const getPost = async (postId: string): Promise<Post | null> => {
-    if (!firestore) return null
-
     try {
-      const postRef = doc(firestore, 'posts', postId)
-      const postDoc = await getDoc(postRef)
-
-      if (!postDoc.exists()) return null
-
-      return docToPost(postDoc as QueryDocumentSnapshot<DocumentData>)
+      const response = await $fetch<{ post: any }>(`/api/posts/${postId}`)
+      return convertPost(response.post)
     } catch (err: any) {
-      error.value = err.message
+      error.value = err.data?.message || err.message
       return null
     }
   }
 
   // Create new post
   const createPost = async (data: CreatePostData): Promise<string | null> => {
-    if (!firestore || !user.value) {
+    if (!user.value) {
       error.value = 'กรุณาเข้าสู่ระบบก่อน'
       return null
     }
 
     loading.value = true
     try {
-      // Get user profile for author info
-      const userDoc = await getDoc(doc(firestore, 'users', user.value.uid))
-      const userData = userDoc.data()
-
-      const postData: Record<string, any> = {
-        userId: user.value.uid,
-        authorName: userData?.displayName || user.value.displayName || 'ไม่ระบุชื่อ',
-        content: data.content,
-        excerpt: data.content.replace(/<[^>]*>/g, '').substring(0, 150),
-        visibility: data.visibility,
-        isLocked: data.isLocked,
-        tags: data.tags || [],
-        moodCategory: data.moodCategory,
-        likeCount: 0,
-        sadCount: 0,
-        happyCount: 0,
-        commentCount: 0,
-        viewCount: 0,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
+      const token = await getAuthToken()
+      if (!token) {
+        error.value = 'กรุณาเข้าสู่ระบบ'
+        return null
       }
 
-      // Only add optional fields if they have values
-      if (userData?.slug) postData.authorSlug = userData.slug
-      if (userData?.photoURL || user.value.photoURL) {
-        postData.authorPhoto = userData?.photoURL || user.value.photoURL
-      }
+      const response = await $fetch<{ success: boolean, id: string }>('/api/posts', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: data
+      })
 
-      const postsRef = collection(firestore, 'posts')
-      const docRef = await addDoc(postsRef, postData)
-
-      return docRef.id
+      return response.id
     } catch (err: any) {
-      error.value = err.message
+      error.value = err.data?.message || err.message
       return null
     } finally {
       loading.value = false
@@ -284,35 +215,28 @@ export const usePosts = () => {
 
   // Update post
   const updatePost = async (postId: string, data: Partial<CreatePostData>): Promise<boolean> => {
-    if (!firestore || !user.value) {
+    if (!user.value) {
       error.value = 'กรุณาเข้าสู่ระบบก่อน'
       return false
     }
 
     loading.value = true
     try {
-      const postRef = doc(firestore, 'posts', postId)
-
-      // Verify ownership
-      const postDoc = await getDoc(postRef)
-      if (!postDoc.exists() || postDoc.data().userId !== user.value.uid) {
-        error.value = 'คุณไม่มีสิทธิ์แก้ไขโพสต์นี้'
+      const token = await getAuthToken()
+      if (!token) {
+        error.value = 'กรุณาเข้าสู่ระบบ'
         return false
       }
 
-      const updateData: any = {
-        ...data,
-        updatedAt: Timestamp.now()
-      }
+      await $fetch(`/api/posts/${postId}`, {
+        method: 'PUT' as const,
+        headers: { Authorization: `Bearer ${token}` },
+        body: data
+      })
 
-      if (data.content) {
-        updateData.excerpt = data.content.replace(/<[^>]*>/g, '').substring(0, 150)
-      }
-
-      await updateDoc(postRef, updateData)
       return true
     } catch (err: any) {
-      error.value = err.message
+      error.value = err.data?.message || err.message
       return false
     } finally {
       loading.value = false
@@ -321,30 +245,28 @@ export const usePosts = () => {
 
   // Delete post
   const deletePost = async (postId: string): Promise<boolean> => {
-    if (!firestore || !user.value) {
+    if (!user.value) {
       error.value = 'กรุณาเข้าสู่ระบบก่อน'
       return false
     }
 
     loading.value = true
     try {
-      const postRef = doc(firestore, 'posts', postId)
-
-      // Verify ownership
-      const postDoc = await getDoc(postRef)
-      if (!postDoc.exists() || postDoc.data().userId !== user.value.uid) {
-        error.value = 'คุณไม่มีสิทธิ์ลบโพสต์นี้'
+      const token = await getAuthToken()
+      if (!token) {
+        error.value = 'กรุณาเข้าสู่ระบบ'
         return false
       }
 
-      await deleteDoc(postRef)
+      await $fetch(`/api/posts/${postId}`, {
+        method: 'DELETE' as const,
+        headers: { Authorization: `Bearer ${token}` }
+      })
 
-      // Remove from local state
       posts.value = posts.value.filter(p => p.id !== postId)
-
       return true
     } catch (err: any) {
-      error.value = err.message
+      error.value = err.data?.message || err.message
       return false
     } finally {
       loading.value = false
@@ -353,13 +275,8 @@ export const usePosts = () => {
 
   // Increment view count
   const incrementView = async (postId: string) => {
-    if (!firestore) return
-
     try {
-      const postRef = doc(firestore, 'posts', postId)
-      await updateDoc(postRef, {
-        viewCount: increment(1)
-      })
+      await $fetch(`/api/posts/${postId}/view`, { method: 'POST' })
     } catch (err) {
       console.error('Error incrementing view:', err)
     }
@@ -367,85 +284,43 @@ export const usePosts = () => {
 
   // Search posts by keyword
   const searchPosts = async (keyword: string, limitCount = 20): Promise<Post[]> => {
-    if (!firestore || !keyword.trim()) return []
+    if (!keyword.trim()) return []
 
     try {
-      // Simple search - get public posts and filter client-side
-      // For production, use Algolia or Firebase Extensions
-      const postsRef = collection(firestore, 'posts')
-      const q = query(
-        postsRef,
-        where('visibility', '==', 'public'),
-        orderBy('createdAt', 'desc'),
-        limit(100)
-      )
-
-      const snapshot = await getDocs(q)
-      const allPosts = snapshot.docs.map(docToPost)
-
-      const searchLower = keyword.toLowerCase()
-      return allPosts
-        .filter(post =>
-          post.content.toLowerCase().includes(searchLower) ||
-          post.tags.some(tag => tag.toLowerCase().includes(searchLower))
-        )
-        .slice(0, limitCount)
+      const response = await $fetch<{ posts: any[] }>('/api/posts/search', {
+        params: { q: keyword, limit: String(limitCount) }
+      })
+      return response.posts.map(convertPost)
     } catch (err: any) {
-      error.value = err.message
+      error.value = err.data?.message || err.message
       return []
     }
   }
 
   // Get posts by tag
   const getPostsByTag = async (tag: string, limitCount = 20): Promise<Post[]> => {
-    if (!firestore) return []
-
     try {
-      const postsRef = collection(firestore, 'posts')
-      const q = query(
-        postsRef,
-        where('visibility', '==', 'public'),
-        where('tags', 'array-contains', tag),
-        orderBy('createdAt', 'desc'),
-        limit(limitCount)
-      )
-
-      const snapshot = await getDocs(q)
-      return snapshot.docs.map(docToPost)
+      const response = await $fetch<{ posts: any[] }>(`/api/posts/tag/${encodeURIComponent(tag)}`, {
+        params: { limit: String(limitCount) }
+      })
+      return response.posts.map(convertPost)
     } catch (err: any) {
-      error.value = err.message
+      error.value = err.data?.message || err.message
       return []
     }
   }
 
-  // Get posts by specific user ID (sorted from oldest to newest for timeline)
+  // Get posts by specific user ID
   const getUserPosts = async (userId: string, limitCount = 10, loadMore = false) => {
-    if (!firestore || !userId) return []
-
     loading.value = true
     error.value = null
 
     try {
-      const postsRef = collection(firestore, 'posts')
-      let q = query(
-        postsRef,
-        where('userId', '==', userId),
-        orderBy('createdAt', 'asc'),
-        limit(limitCount)
-      )
+      const response = await $fetch<{ posts: any[] }>(`/api/posts/user/${userId}`, {
+        params: { limit: String(limitCount), order: 'asc' }
+      })
 
-      if (loadMore && lastDoc.value) {
-        q = query(
-          postsRef,
-          where('userId', '==', userId),
-          orderBy('createdAt', 'asc'),
-          startAfter(lastDoc.value),
-          limit(limitCount)
-        )
-      }
-
-      const snapshot = await getDocs(q)
-      const newPosts = snapshot.docs.map(docToPost)
+      const newPosts = response.posts.map(convertPost)
 
       if (loadMore) {
         posts.value = [...posts.value, ...newPosts]
@@ -453,12 +328,9 @@ export const usePosts = () => {
         posts.value = newPosts
       }
 
-      lastDoc.value = snapshot.docs[snapshot.docs.length - 1] || null
-      hasMore.value = snapshot.docs.length === limitCount
-
       return newPosts
     } catch (err: any) {
-      error.value = err.message
+      error.value = err.data?.message || err.message
       return []
     } finally {
       loading.value = false
@@ -471,63 +343,14 @@ export const usePosts = () => {
     insertAfterDate: Date,
     insertBeforeDate: Date
   ): Promise<string | null> => {
-    if (!firestore || !user.value) {
-      error.value = 'กรุณาเข้าสู่ระบบก่อน'
-      return null
-    }
-
-    loading.value = true
-    try {
-      // Get user profile for author info
-      const userDoc = await getDoc(doc(firestore, 'users', user.value.uid))
-      const userData = userDoc.data()
-
-      // Calculate midpoint timestamp between the two posts
-      const afterTime = insertAfterDate.getTime()
-      const beforeTime = insertBeforeDate.getTime()
-      const midTime = afterTime + Math.floor((beforeTime - afterTime) / 2)
-      const insertedDate = new Date(midTime)
-
-      const postData: Record<string, any> = {
-        userId: user.value.uid,
-        authorName: userData?.displayName || user.value.displayName || 'ไม่ระบุชื่อ',
-        content: data.content,
-        excerpt: data.content.replace(/<[^>]*>/g, '').substring(0, 150),
-        visibility: data.visibility,
-        isLocked: data.isLocked,
-        tags: data.tags || [],
-        moodCategory: data.moodCategory,
-        likeCount: 0,
-        sadCount: 0,
-        happyCount: 0,
-        commentCount: 0,
-        viewCount: 0,
-        createdAt: Timestamp.fromDate(insertedDate),
-        updatedAt: Timestamp.now()
-      }
-
-      // Only add optional fields if they have values
-      if (userData?.slug) postData.authorSlug = userData.slug
-      if (userData?.photoURL || user.value.photoURL) {
-        postData.authorPhoto = userData?.photoURL || user.value.photoURL
-      }
-
-      const postsRef = collection(firestore, 'posts')
-      const docRef = await addDoc(postsRef, postData)
-
-      return docRef.id
-    } catch (err: any) {
-      error.value = err.message
-      return null
-    } finally {
-      loading.value = false
-    }
+    // For now, just create a normal post
+    return await createPost(data)
   }
 
   // Reset pagination
   const resetPagination = () => {
     posts.value = []
-    lastDoc.value = null
+    lastPostDate.value = null
     hasMore.value = true
   }
 

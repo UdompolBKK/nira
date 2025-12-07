@@ -1,13 +1,6 @@
 // composables/useActiveListener.ts
 // Active Listener AI - Provides real-time encouragement while user is typing
-
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  limit
-} from 'firebase/firestore'
+// Using API with Firebase Admin SDK
 
 export interface ListenerResponse {
   message: string
@@ -63,7 +56,6 @@ const DEFAULT_KEYWORDS = {
 
 export const useActiveListener = () => {
   const config = useRuntimeConfig()
-  const { firestore } = useFirebase()
 
   const currentResponse = ref<ListenerResponse | null>(null)
   const isListening = ref(false)
@@ -72,51 +64,33 @@ export const useActiveListener = () => {
   const isTyping = ref(false)
   const showBubble = ref(false)
   const trainedResponses = ref<TrainedResponse[]>([])
-  const defaultBotId = ref<string | null>(null)
+  const currentBotId = ref<string | null>(null)
 
-  // Debounce timer
-  let debounceTimer: NodeJS.Timeout | null = null
-  let hideTimer: NodeJS.Timeout | null = null
+  // Timers and state
   let lastKeywordMatch = ref<string | null>(null)
 
-  // Load training data from default bot
+  // Load training data from API
   const loadTrainingData = async () => {
-    if (!firestore) return
-
     try {
-      // Get default bot first
-      const botsRef = collection(firestore, 'botConfigs')
-      const botQuery = query(
-        botsRef,
-        where('isDefault', '==', true),
-        where('isActive', '==', true),
-        limit(1)
-      )
-      const botSnapshot = await getDocs(botQuery)
-
-      if (botSnapshot.empty) return
-
-      const botDoc = botSnapshot.docs[0]
-      defaultBotId.value = botDoc.id
-
-      // Load training data for this bot
-      const trainingRef = collection(firestore, 'botTrainingData')
-      const trainingQuery = query(
-        trainingRef,
-        where('botId', '==', botDoc.id),
-        where('isActive', '==', true),
-        limit(50) // Limit to 50 examples for performance
-      )
-      const trainingSnapshot = await getDocs(trainingQuery)
-
-      trainedResponses.value = trainingSnapshot.docs.map(doc => ({
-        keywords: doc.data().keywords || [],
-        response: doc.data().idealResponse || '',
-        category: doc.data().category || 'general'
-      }))
+      const response = await $fetch<{ trainedResponses: TrainedResponse[]; botId: string | null }>('/api/bot/training-data')
+      trainedResponses.value = response.trainedResponses
+      // Only set if currentBotId is not already set
+      if (!currentBotId.value) {
+        currentBotId.value = response.botId
+      }
     } catch (err) {
       console.error('Error loading training data:', err)
+      // Use empty array as fallback - will use default keywords
+      trainedResponses.value = []
     }
+  }
+
+  // Set the current bot ID (called when user changes bot selection)
+  const setBotId = (botId: string) => {
+    console.log('[ActiveListener] Bot changed to:', botId)
+    currentBotId.value = botId
+    // Clear last analyzed text to force re-analyze with new bot
+    lastAnalyzedText.value = ''
   }
 
   // Start listening
@@ -144,7 +118,17 @@ export const useActiveListener = () => {
     showBubble.value = false
   }
 
-  // Analyze text and show response - realtime detection
+  // Rate limit tracking
+  let lastApiCallTime = 0
+  const API_COOLDOWN = 5000 // 5 seconds between API calls
+  let apiCallCount = ref(0)
+  const MAX_API_CALLS_PER_SESSION = 50 // Increased limit
+
+  // Idle detection - trigger when user stops typing for 2 seconds
+  const IDLE_TIMEOUT = 2000 // 2 seconds after user stops typing
+  let idleDetectionTimer: NodeJS.Timeout | null = null
+
+  // Analyze text and show response - Triggered when user stops typing for 2 seconds
   const analyzeText = (text: string) => {
     if (!isListening.value) {
       console.log('[ActiveListener] Not listening, skipping analysis')
@@ -152,47 +136,57 @@ export const useActiveListener = () => {
     }
 
     const cleanText = text.replace(/<[^>]*>/g, '').trim()
-    console.log('[ActiveListener] Analyzing text:', cleanText.substring(0, 50))
 
-    // Set typing state immediately
+    // User is typing - show typing indicator
     isTyping.value = true
     characterMood.value = 'listening'
 
-    // Clear previous timer
-    if (debounceTimer) {
-      clearTimeout(debounceTimer)
+    // Clear previous idle detection timer
+    if (idleDetectionTimer) {
+      clearTimeout(idleDetectionTimer)
     }
 
-    // Check for keyword match immediately (realtime)
-    if (cleanText.length >= 2) {
-      const matchedKeyword = findMatchedKeyword(cleanText)
-      console.log('[ActiveListener] Keyword match result:', matchedKeyword, 'last:', lastKeywordMatch.value)
-      if (matchedKeyword && matchedKeyword !== lastKeywordMatch.value) {
-        lastKeywordMatch.value = matchedKeyword
-        characterMood.value = 'responding'
-        const response = getResponseFromText(cleanText)
-        console.log('[ActiveListener] Showing response:', response.message)
-        showResponse(response)
-      }
-    }
+    // Start new idle detection - triggers when user stops typing for 2 seconds
+    idleDetectionTimer = setTimeout(async () => {
+      console.log('[ActiveListener] User stopped typing for 2s, analyzing:', cleanText.substring(0, 50))
 
-    // Debounce for stopping typing indicator
-    debounceTimer = setTimeout(() => {
+      // User stopped typing
       isTyping.value = false
 
-      // Skip if text hasn't changed significantly
+      // Skip if text hasn't changed
       if (cleanText === lastAnalyzedText.value) return
-      if (cleanText.length < 5) return
+      if (cleanText.length < 10) return // Need at least 10 chars
 
       lastAnalyzedText.value = cleanText
+      characterMood.value = 'responding'
 
-      // Show response based on text length if no keyword match
-      if (!lastKeywordMatch.value && cleanText.length > 50) {
-        characterMood.value = 'responding'
-        const response = getResponseFromText(cleanText)
-        showResponse(response)
+      // Check rate limits before calling API
+      const now = Date.now()
+      const canCallApi = (
+        now - lastApiCallTime >= API_COOLDOWN &&
+        apiCallCount.value < MAX_API_CALLS_PER_SESSION
+      )
+
+      if (canCallApi) {
+        // Call OpenAI API for smart, personalized response
+        console.log('[ActiveListener] Calling OpenAI API...')
+        lastApiCallTime = now
+        apiCallCount.value++
+
+        const smartResponse = await getSmartResponse(cleanText, currentBotId.value || undefined)
+
+        if (smartResponse) {
+          console.log('[ActiveListener] Got AI response:', smartResponse.message)
+          showResponse(smartResponse)
+          return
+        }
       }
-    }, 800) // Shorter debounce for better UX
+
+      // Fallback only if rate limited or API fails
+      console.log('[ActiveListener] Using fallback (rate limited or API failed)')
+      const fallbackResponse = getResponseFromText(cleanText)
+      showResponse(fallbackResponse)
+    }, IDLE_TIMEOUT) // 2 seconds after user stops typing
   }
 
   // Find matched keyword in text
@@ -270,63 +264,37 @@ export const useActiveListener = () => {
     return responses[Math.floor(Math.random() * responses.length)]
   }
 
-  // Show response with bubble
+  // Show response with bubble - bubble stays visible until next response
   const showResponse = (response: ListenerResponse) => {
     currentResponse.value = response
     showBubble.value = true
-
-    // Clear previous hide timer
-    if (hideTimer) {
-      clearTimeout(hideTimer)
-    }
-
-    // Hide bubble after delay
-    hideTimer = setTimeout(() => {
-      showBubble.value = false
-      characterMood.value = 'idle'
-    }, 5000)
+    characterMood.value = 'idle'
+    // Bubble stays visible - no auto-hide timer
   }
 
-  // Call Grok API for smart response (optional, for more personalized responses)
-  const getSmartResponse = async (text: string): Promise<ListenerResponse | null> => {
-    const apiKey = config.public.grokApiKey
-    if (!apiKey) return null
-
+  // Call GPT-4o mini API for smart response via server API
+  const getSmartResponse = async (text: string, botId?: string): Promise<ListenerResponse | null> => {
     try {
-      const response = await fetch('https://api.x.ai/v1/chat/completions', {
+      const response = await $fetch<{ response: string }>('/api/bot/active-listener', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'grok-beta',
-          messages: [
-            {
-              role: 'system',
-              content: `คุณเป็น Active Listener ที่คอยให้กำลังใจ ไม่ต้องตอบยาว แค่พูดสั้นๆ 2-5 คำเท่านั้น เหมือนเพื่อนที่ฟังอยู่ข้างๆ
-ตอบเป็น JSON: {"message": "ข้อความสั้นๆ", "emotion": "happy|caring|thinking|encouraging|neutral"}`
-            },
-            {
-              role: 'user',
-              content: `ผู้ใช้กำลังเขียน: "${text.substring(0, 200)}"`
-            }
-          ],
-          temperature: 0.8,
-          max_tokens: 50
-        })
+        body: {
+          text: text.substring(0, 200),
+          botId: botId || currentBotId.value || 'default'
+        }
       })
 
-      if (!response.ok) return null
-
-      const data = await response.json()
-      const content = data.choices?.[0]?.message?.content || ''
-
-      try {
-        return JSON.parse(content) as ListenerResponse
-      } catch {
-        return null
+      if (response?.response) {
+        try {
+          return JSON.parse(response.response) as ListenerResponse
+        } catch {
+          // If not JSON, create response from text
+          return {
+            message: response.response,
+            emotion: 'neutral'
+          }
+        }
       }
+      return null
     } catch {
       return null
     }
@@ -343,8 +311,7 @@ export const useActiveListener = () => {
 
   // Cleanup
   onUnmounted(() => {
-    if (debounceTimer) clearTimeout(debounceTimer)
-    if (hideTimer) clearTimeout(hideTimer)
+    if (idleDetectionTimer) clearTimeout(idleDetectionTimer)
   })
 
   return {
@@ -353,9 +320,11 @@ export const useActiveListener = () => {
     characterMood,
     isTyping,
     showBubble,
+    currentBotId,
     startListening,
     stopListening,
     analyzeText,
-    triggerIdleResponse
+    triggerIdleResponse,
+    setBotId
   }
 }

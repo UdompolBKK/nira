@@ -151,7 +151,7 @@ export const usePageView = () => {
     try {
       const { getDocument } = useFirestore()
       const collectionName = pageType === 'hotel' ? 'hotels' : 'blogs'
-      const doc = await getDocument(collectionName, pageId)
+      const doc = await getDocument(collectionName, pageId) as { viewCount?: number } | null
       return doc?.viewCount || 0
     } catch {
       return 0

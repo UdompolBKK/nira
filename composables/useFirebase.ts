@@ -1,13 +1,13 @@
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app'
 import { getAuth, type Auth } from 'firebase/auth'
 import { getFirestore, type Firestore } from 'firebase/firestore'
-import { getStorage, type Storage } from 'firebase/storage'
+import { getStorage, type FirebaseStorage } from 'firebase/storage'
 
 // Singleton instances
 let firebaseApp: FirebaseApp | null = null
 let firebaseAuth: Auth | null = null
 let firebaseFirestore: Firestore | null = null
-let firebaseStorage: Storage | null = null
+let firebaseStorage: FirebaseStorage | null = null
 
 export const useFirebase = () => {
   // Initialize only once
@@ -38,6 +38,6 @@ export const useFirebase = () => {
     app: firebaseApp as FirebaseApp,
     auth: firebaseAuth as Auth,
     firestore: firebaseFirestore as Firestore,
-    storage: firebaseStorage as Storage
+    storage: firebaseStorage as FirebaseStorage
   }
 }

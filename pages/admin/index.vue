@@ -8,6 +8,7 @@
             <NuxtLink to="/" class="text-gray-400 hover:text-gray-600">
               <Icon name="lucide:arrow-left" class="w-5 h-5" />
             </NuxtLink>
+            <img src="/nira.png" alt="Nira" class="h-8 w-auto" />
             <h1 class="text-xl font-bold text-gray-900">AI Bot Admin</h1>
           </div>
           <span class="text-sm text-gray-500">{{ user?.email }}</span>
@@ -696,7 +697,7 @@
       </div>
     </Transition>
 
-    <!-- Training Modal (Chat-based Training with Summary Save) -->
+    <!-- Training Modal (Chat-based Training) -->
     <Transition name="fade">
       <div
         v-if="showTrainingModal && trainingBot"
@@ -704,155 +705,227 @@
         @click.self="showTrainingModal = false"
       >
         <div class="bg-white rounded-2xl w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden">
-          <!-- Header -->
-          <div class="p-4 border-b border-gray-100 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <span class="text-2xl">{{ trainingBot.emoji }}</span>
-              <div>
-                <h3 class="font-medium text-gray-900">Train: {{ trainingBot.name }}</h3>
-                <p class="text-xs text-gray-500">สอน AI ให้ตอบตามที่คุณต้องการ</p>
-              </div>
-            </div>
-            <button @click="showTrainingModal = false" class="p-2 text-gray-400 hover:text-gray-600">
-              <Icon name="lucide:x" class="w-5 h-5" />
-            </button>
-          </div>
-
-          <!-- Training Examples List -->
-          <div class="flex-1 overflow-y-auto p-4 space-y-4">
-            <div class="bg-purple-50 rounded-lg p-4 text-sm">
-              <p class="font-medium text-purple-900 mb-2">วิธี Train AI:</p>
-              <ol class="text-purple-700 space-y-1 list-decimal list-inside">
-                <li>เพิ่ม "สถานการณ์" - เมื่อ user พูดแบบนี้...</li>
-                <li>กำหนด "การตอบที่ดี" - AI ควรตอบแบบนี้...</li>
-                <li>ใส่ Keywords เพื่อให้ AI จับคำได้</li>
-              </ol>
-            </div>
-
-            <!-- Training Form -->
-            <div class="bg-gray-50 rounded-xl p-4 space-y-3">
-              <h4 class="font-medium text-gray-900">เพิ่มตัวอย่างการตอบ</h4>
-
-              <div>
-                <label class="block text-xs text-gray-500 mb-1">สถานการณ์ (เมื่อ user พูดเกี่ยวกับ...)</label>
-                <input
-                  v-model="trainingForm.scenario"
-                  type="text"
-                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                  placeholder="เช่น user บอกว่ารู้สึกเหนื่อยมาก"
-                />
-              </div>
-
-              <div>
-                <label class="block text-xs text-gray-500 mb-1">ตัวอย่างข้อความจาก user</label>
-                <input
-                  v-model="trainingForm.userMessage"
-                  type="text"
-                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                  placeholder="เช่น วันนี้เหนื่อยมากเลย ไม่ไหวแล้ว"
-                />
-              </div>
-
-              <div>
-                <label class="block text-xs text-gray-500 mb-1">การตอบที่ดี (AI ควรตอบ)</label>
-                <textarea
-                  v-model="trainingForm.idealResponse"
-                  rows="3"
-                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                  placeholder="เช่น เข้าใจเลย วันนี้คงหนักมาก หยุดพักสักครู่ก็ได้นะ ✨"
-                />
-              </div>
-
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs text-gray-500 mb-1">Keywords (คั่นด้วย ,)</label>
-                  <input
-                    v-model="trainingForm.keywords"
-                    type="text"
-                    class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                    placeholder="เหนื่อย, ไม่ไหว, หนัก"
+          <!-- Header with Tabs -->
+          <div class="p-4 border-b border-gray-100">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center overflow-hidden">
+                  <img
+                    v-if="trainingBot.avatar"
+                    :src="trainingBot.avatar"
+                    :alt="trainingBot.name"
+                    class="w-full h-full object-cover"
                   />
+                  <Icon v-else name="lucide:bot" class="w-5 h-5 text-purple-400" />
                 </div>
                 <div>
-                  <label class="block text-xs text-gray-500 mb-1">หมวดหมู่</label>
-                  <select
-                    v-model="trainingForm.category"
-                    class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                  >
-                    <option value="greeting">ทักทาย</option>
-                    <option value="support">ให้กำลังใจ</option>
-                    <option value="crisis">วิกฤต/เสี่ยง</option>
-                    <option value="general">ทั่วไป</option>
-                    <option value="farewell">ลา</option>
-                  </select>
+                  <h3 class="font-medium text-gray-900">Train: {{ trainingBot.name }}</h3>
+                  <p class="text-xs text-gray-500">สอน AI ให้จดจำและเรียนรู้ได้เอง</p>
                 </div>
               </div>
-
-              <button
-                @click="addTrainingExampleHandler"
-                :disabled="!trainingForm.scenario || !trainingForm.idealResponse || saving"
-                class="w-full py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50"
-              >
-                {{ saving ? 'กำลังบันทึก...' : '+ เพิ่มตัวอย่าง' }}
+              <button @click="showTrainingModal = false" class="p-2 text-gray-400 hover:text-gray-600">
+                <Icon name="lucide:x" class="w-5 h-5" />
               </button>
             </div>
 
-            <!-- Existing Examples -->
-            <div v-if="currentBotExamples.length > 0" class="space-y-3">
-              <h4 class="font-medium text-gray-900">ตัวอย่างที่บันทึกแล้ว ({{ currentBotExamples.length }})</h4>
-
-              <div
-                v-for="example in currentBotExamples"
-                :key="example.id"
-                class="bg-white border border-gray-200 rounded-lg p-3"
+            <!-- Training Mode Tabs -->
+            <div class="flex gap-2">
+              <button
+                @click="trainingMode = 'chat'"
+                class="px-3 py-1.5 text-sm rounded-lg transition-colors"
+                :class="trainingMode === 'chat' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
               >
-                <div class="flex items-start justify-between">
-                  <div class="flex-1">
-                    <span class="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
-                      {{ getCategoryLabel(example.category) }}
-                    </span>
-                    <p class="text-sm font-medium text-gray-900 mt-1">{{ example.scenario }}</p>
-                    <div class="mt-2 space-y-1">
-                      <p class="text-xs text-gray-500">User: "{{ example.userMessage }}"</p>
-                      <p class="text-xs text-green-700">Bot: "{{ example.idealResponse }}"</p>
+                💬 สนทนา
+              </button>
+              <button
+                @click="trainingMode = 'examples'; loadBotMemories()"
+                class="px-3 py-1.5 text-sm rounded-lg transition-colors"
+                :class="trainingMode === 'examples' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+              >
+                🧠 ความจำ ({{ botMemories.length }})
+              </button>
+            </div>
+          </div>
+
+          <!-- Chat Training Mode -->
+          <template v-if="trainingMode === 'chat'">
+            <!-- Chat Messages Area -->
+            <div ref="chatContainer" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+              <!-- Welcome message -->
+              <div v-if="trainingChat.length === 0" class="text-center py-8">
+                <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
+                  <img
+                    v-if="trainingBot.avatar"
+                    :src="trainingBot.avatar"
+                    class="w-full h-full object-cover rounded-full"
+                  />
+                  <Icon v-else name="lucide:bot" class="w-8 h-8 text-purple-400" />
+                </div>
+                <h4 class="font-medium text-gray-900 mb-2">สอน AI ผ่านการสนทนา</h4>
+                <p class="text-sm text-gray-500 max-w-md mx-auto mb-3">
+                  AI จะเรียนรู้และจำได้เอง! ลองสั่งให้จำอะไรสักอย่าง เช่น:
+                </p>
+                <div class="flex flex-wrap gap-2 justify-center max-w-md mx-auto">
+                  <span class="px-3 py-1 bg-purple-50 text-purple-700 text-xs rounded-full">"เป็นผู้ชายนะ พูดครับ"</span>
+                  <span class="px-3 py-1 bg-purple-50 text-purple-700 text-xs rounded-full">"จำไว้ว่าฉันชื่อกวิน"</span>
+                  <span class="px-3 py-1 bg-purple-50 text-purple-700 text-xs rounded-full">"ชอบใช้ emoji เยอะๆ"</span>
+                </div>
+              </div>
+
+              <!-- Chat messages -->
+              <div
+                v-for="(msg, idx) in trainingChat"
+                :key="idx"
+                class="flex"
+                :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
+              >
+                <div
+                  v-if="msg.role === 'assistant'"
+                  class="flex gap-2 max-w-[85%]"
+                >
+                  <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                    <img
+                      v-if="trainingBot.avatar"
+                      :src="trainingBot.avatar"
+                      class="w-full h-full object-cover"
+                    />
+                    <Icon v-else name="lucide:bot" class="w-4 h-4 text-purple-400" />
+                  </div>
+                  <div class="space-y-2">
+                    <div
+                      class="px-4 py-2.5 rounded-2xl rounded-tl-sm text-sm"
+                      :class="msg.isEdited ? 'bg-green-100 text-green-900' : msg.memorySaved ? 'bg-purple-50 text-gray-900 shadow-sm border border-purple-200' : 'bg-white text-gray-900 shadow-sm'"
+                    >
+                      {{ msg.content }}
                     </div>
-                    <div class="flex gap-1 mt-2">
-                      <span
-                        v-for="kw in example.keywords"
-                        :key="kw"
-                        class="text-xs px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded"
-                      >
-                        {{ kw }}
-                      </span>
+                    <!-- Memory saved indicator (auto-learned) -->
+                    <div v-if="msg.memorySaved" class="flex items-center gap-1 px-2 py-1 bg-purple-100 rounded-lg">
+                      <Icon name="lucide:brain" class="w-3 h-3 text-purple-600" />
+                      <span class="text-xs text-purple-700">จำได้แล้ว: {{ msg.savedMemory }}</span>
                     </div>
                   </div>
-                  <button
-                    @click="deleteTrainingExampleHandler(example.id)"
-                    class="p-1 text-gray-400 hover:text-red-500"
-                  >
-                    <Icon name="lucide:trash-2" class="w-4 h-4" />
-                  </button>
+                </div>
+
+                <div
+                  v-else
+                  class="max-w-[85%] px-4 py-2.5 bg-gray-900 text-white rounded-2xl rounded-tr-sm text-sm"
+                >
+                  {{ msg.content }}
+                </div>
+              </div>
+
+              <!-- AI Typing indicator -->
+              <div v-if="isAiTyping" class="flex justify-start">
+                <div class="flex gap-2 max-w-[85%]">
+                  <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                    <img
+                      v-if="trainingBot.avatar"
+                      :src="trainingBot.avatar"
+                      class="w-full h-full object-cover"
+                    />
+                    <Icon v-else name="lucide:bot" class="w-4 h-4 text-purple-400" />
+                  </div>
+                  <div class="px-4 py-3 bg-white rounded-2xl rounded-tl-sm shadow-sm">
+                    <div class="flex gap-1">
+                      <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+                      <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+                      <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div v-else class="text-center py-8 text-gray-500 text-sm">
-              ยังไม่มีตัวอย่างการสอน เริ่มเพิ่มได้เลย
+            <!-- Chat Input -->
+            <div class="p-4 border-t border-gray-100 bg-white">
+              <form @submit.prevent="sendTrainingMessage" class="flex gap-2">
+                <input
+                  v-model="trainingInput"
+                  type="text"
+                  class="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="พิมพ์ข้อความเหมือน user จริง..."
+                  :disabled="isAiTyping"
+                />
+                <button
+                  type="submit"
+                  :disabled="!trainingInput.trim() || isAiTyping"
+                  class="px-4 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Icon name="lucide:send" class="w-5 h-5" />
+                </button>
+              </form>
+              <p class="text-xs text-gray-400 mt-2 text-center">
+                AI จะจดจำเองเมื่อคุณสั่งให้จำ/เปลี่ยน เช่น "พูดแบบผู้ชาย" "จำว่าฉันชื่อ..."
+              </p>
             </div>
-          </div>
+          </template>
 
-          <!-- Footer -->
-          <div class="p-4 border-t border-gray-100 flex justify-between items-center">
-            <p class="text-xs text-gray-500">
-              ข้อมูลที่บันทึกจะถูกใช้เป็น context ให้ AI ตอบได้ดีขึ้น
-            </p>
-            <button
-              @click="showTrainingModal = false"
-              class="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-800"
-            >
-              เสร็จสิ้น
-            </button>
-          </div>
+          <!-- Memories List Mode -->
+          <template v-else>
+            <div class="flex-1 overflow-y-auto p-4 space-y-4">
+              <!-- Memories List -->
+              <div v-if="botMemories.length > 0" class="space-y-3">
+                <div
+                  v-for="memory in botMemories"
+                  :key="memory.id"
+                  class="bg-white border border-gray-200 rounded-lg p-4"
+                >
+                  <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                      <div class="flex items-center gap-2 mb-2">
+                        <span class="text-xs px-2 py-0.5 rounded"
+                          :class="{
+                            'bg-purple-100 text-purple-700': memory.category === 'personality',
+                            'bg-blue-100 text-blue-700': memory.category === 'preference',
+                            'bg-green-100 text-green-700': memory.category === 'fact',
+                            'bg-orange-100 text-orange-700': memory.category === 'instruction'
+                          }"
+                        >
+                          {{ getMemoryCategoryLabel(memory.category) }}
+                        </span>
+                      </div>
+
+                      <!-- Memory content -->
+                      <div class="flex items-start gap-2">
+                        <Icon name="lucide:brain" class="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" />
+                        <p class="text-sm text-gray-900">{{ memory.memory }}</p>
+                      </div>
+
+                      <!-- Source message if available -->
+                      <div v-if="memory.sourceMessage" class="mt-2 pl-6">
+                        <p class="text-xs text-gray-400">จากข้อความ: "{{ memory.sourceMessage }}"</p>
+                      </div>
+                    </div>
+                    <button
+                      @click="deleteBotMemory(memory.id)"
+                      class="p-1 text-gray-400 hover:text-red-500 ml-2"
+                    >
+                      <Icon name="lucide:trash-2" class="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div v-else class="text-center py-12 text-gray-500">
+                <Icon name="lucide:brain" class="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p class="text-sm">ยังไม่มีความจำ</p>
+                <p class="text-xs mt-1">ไปที่แท็บ "สนทนา" แล้วสั่งให้ AI จำอะไรสักอย่าง</p>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-4 border-t border-gray-100 flex justify-between items-center">
+              <p class="text-xs text-gray-500">
+                {{ botMemories.length }} ความจำที่บันทึก
+              </p>
+              <button
+                @click="showTrainingModal = false"
+                class="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-800"
+              >
+                เสร็จสิ้น
+              </button>
+            </div>
+          </template>
         </div>
       </div>
     </Transition>
@@ -965,6 +1038,34 @@ const trainingForm = ref({
   category: 'support' as TrainingExample['category']
 })
 
+// Chat-based training state
+interface TrainingChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+  isEditing?: boolean
+  isEdited?: boolean
+  isSaved?: boolean
+  memorySaved?: boolean  // AI automatically saved this as memory
+  savedMemory?: string   // What memory was saved
+}
+const trainingMode = ref<'chat' | 'examples'>('chat')
+const trainingChat = ref<TrainingChatMessage[]>([])
+const trainingInput = ref('')
+const isAiTyping = ref(false)
+const chatContainer = ref<HTMLElement | null>(null)
+
+// Bot memories state
+interface BotMemory {
+  id: string
+  botId: string
+  memory: string
+  category: string
+  createdAt: Date
+  isActive: boolean
+  sourceMessage?: string
+}
+const botMemories = ref<BotMemory[]>([])
+
 // Load data
 const loadAnalytics = async () => {
   loadingAnalytics.value = true
@@ -974,6 +1075,39 @@ const loadAnalytics = async () => {
 
 const loadConversations = async () => {
   await getHighRiskConversations(0.7, 50)
+}
+
+// Load bot memories from API
+const loadBotMemories = async () => {
+  if (!trainingBot.value) return
+
+  try {
+    const response = await $fetch<{ memories: BotMemory[] }>('/api/bot/memories', {
+      method: 'GET',
+      query: { botId: trainingBot.value.id }
+    })
+    botMemories.value = response.memories || []
+  } catch (err) {
+    console.error('Error loading memories:', err)
+    botMemories.value = []
+  }
+}
+
+// Delete a bot memory
+const deleteBotMemory = async (memoryId: string) => {
+  if (!confirm('ต้องการลบความจำนี้?')) return
+
+  try {
+    await $fetch('/api/bot/memories', {
+      method: 'DELETE',
+      body: { memoryId }
+    })
+    // Reload memories
+    await loadBotMemories()
+  } catch (err) {
+    console.error('Error deleting memory:', err)
+    alert('เกิดข้อผิดพลาดในการลบ')
+  }
 }
 
 // Risk percent calculation
@@ -1219,8 +1353,80 @@ const handleAvatarUpload = async (event: Event) => {
 const openTrainingModal = async (bot: BotConfig) => {
   trainingBot.value = bot
   showTrainingModal.value = true
+  trainingMode.value = 'chat'
+  trainingChat.value = []
+  trainingInput.value = ''
   // Load existing training examples for this bot
   await getTrainingExamples(bot.id)
+}
+
+// Send message to AI for training - Now uses train-chat API with auto-learning!
+const sendTrainingMessage = async () => {
+  if (!trainingInput.value.trim() || !trainingBot.value || isAiTyping.value) return
+
+  const userMessage = trainingInput.value.trim()
+  trainingInput.value = ''
+
+  // Add user message to chat
+  trainingChat.value.push({
+    role: 'user',
+    content: userMessage
+  })
+
+  // Scroll to bottom
+  await nextTick()
+  if (chatContainer.value) {
+    chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+  }
+
+  // Show typing indicator
+  isAiTyping.value = true
+
+  try {
+    // Call train-chat API - AI can now auto-learn and save memories!
+    const response = await $fetch<{
+      response: string
+      memorySaved: boolean
+      savedMemory?: string
+    }>('/api/bot/train-chat', {
+      method: 'POST',
+      body: {
+        message: userMessage,
+        botId: trainingBot.value.id,
+        history: trainingChat.value.slice(0, -1).map(m => ({
+          role: m.role,
+          content: m.content
+        }))
+      }
+    })
+
+    // Add AI response with memory info
+    trainingChat.value.push({
+      role: 'assistant',
+      content: response.response,
+      isEditing: false,
+      isEdited: false,
+      isSaved: false,
+      memorySaved: response.memorySaved,
+      savedMemory: response.savedMemory
+    })
+  } catch (err) {
+    console.error('AI response error:', err)
+    trainingChat.value.push({
+      role: 'assistant',
+      content: 'ขอโทษด้วยนะ ตอนนี้มีปัญหาเล็กน้อย ลองใหม่อีกครั้งนะ',
+      isEditing: false,
+      isEdited: false,
+      isSaved: false
+    })
+  } finally {
+    isAiTyping.value = false
+    // Scroll to bottom
+    await nextTick()
+    if (chatContainer.value) {
+      chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+    }
+  }
 }
 
 const addTrainingExampleHandler = async () => {
@@ -1269,6 +1475,16 @@ const getCategoryLabel = (category: string) => {
     crisis: 'วิกฤต',
     general: 'ทั่วไป',
     farewell: 'ลา'
+  }
+  return labels[category] || category
+}
+
+const getMemoryCategoryLabel = (category: string) => {
+  const labels: Record<string, string> = {
+    personality: 'บุคลิกภาพ',
+    preference: 'ความชอบ',
+    fact: 'ข้อเท็จจริง',
+    instruction: 'คำสั่ง'
   }
   return labels[category] || category
 }

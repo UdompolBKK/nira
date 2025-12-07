@@ -18,9 +18,18 @@
 
     <!-- Character Container - Always visible -->
     <div
-      class="relative"
+      class="relative group"
       :class="{ 'animate-bounce-gentle': isIdle }"
     >
+      <!-- Settings Button (Gear Icon) -->
+      <button
+        @click="showSkinSelector = true"
+        class="absolute -top-1 -left-1 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-gray-50"
+        title="เลือก AI Skin"
+      >
+        <Icon name="lucide:settings" class="w-3.5 h-3.5 text-gray-500" />
+      </button>
+
       <!-- Listening indicator (typing) -->
       <Transition name="fade">
         <div
@@ -31,48 +40,137 @@
 
       <!-- Character Avatar -->
       <div
-        class="w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center shadow-lg overflow-hidden ring-4 ring-purple-300 ring-opacity-50"
+        @click="showSkinSelector = true"
+        class="w-20 h-20 flex items-center justify-center cursor-pointer transition-all"
         :class="{
-          'ring-green-300': isTyping
+          'drop-shadow-lg': selectedBot?.avatar
         }"
       >
-        <!-- Character Face -->
-        <div class="relative w-12 h-12">
-          <!-- Face base -->
-          <div class="absolute inset-0 bg-gradient-to-br from-amber-200 to-amber-300 rounded-full" />
+        <!-- Bot Avatar Image (if selected bot has avatar) - transparent PNG support -->
+        <img
+          v-if="selectedBot?.avatar"
+          :src="selectedBot.avatar"
+          :alt="selectedBot.name"
+          class="w-full h-full object-contain"
+        />
+        <!-- Default Character Face (if no avatar) -->
+        <div v-else class="relative w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center shadow-lg ring-4 ring-purple-300 ring-opacity-50">
+          <div class="relative w-12 h-12">
+            <!-- Face base -->
+            <div class="absolute inset-0 bg-gradient-to-br from-amber-200 to-amber-300 rounded-full" />
 
-          <!-- Eyes -->
-          <div class="absolute top-3 left-2 w-2 h-2 bg-gray-800 rounded-full"
-            :class="{ 'animate-blink': !isTyping }"
-          />
-          <div class="absolute top-3 right-2 w-2 h-2 bg-gray-800 rounded-full"
-            :class="{ 'animate-blink': !isTyping }"
-          />
+            <!-- Eyes -->
+            <div class="absolute top-3 left-2 w-2 h-2 bg-gray-800 rounded-full"
+              :class="{ 'animate-blink': !isTyping }"
+            />
+            <div class="absolute top-3 right-2 w-2 h-2 bg-gray-800 rounded-full"
+              :class="{ 'animate-blink': !isTyping }"
+            />
 
-          <!-- Blush -->
-          <div class="absolute top-5 left-0.5 w-2.5 h-1.5 bg-pink-300 rounded-full opacity-60" />
-          <div class="absolute top-5 right-0.5 w-2.5 h-1.5 bg-pink-300 rounded-full opacity-60" />
+            <!-- Blush -->
+            <div class="absolute top-5 left-0.5 w-2.5 h-1.5 bg-pink-300 rounded-full opacity-60" />
+            <div class="absolute top-5 right-0.5 w-2.5 h-1.5 bg-pink-300 rounded-full opacity-60" />
 
-          <!-- Mouth - changes based on emotion -->
-          <div
-            class="absolute bottom-2 left-1/2 transform -translate-x-1/2"
-            :class="mouthClass"
-          />
+            <!-- Mouth - changes based on emotion -->
+            <div
+              class="absolute bottom-2 left-1/2 transform -translate-x-1/2"
+              :class="mouthClass"
+            />
 
-          <!-- Stethoscope/Doctor element -->
-          <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-6 h-2 bg-purple-400 rounded-full" />
+            <!-- Stethoscope/Doctor element -->
+            <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-6 h-2 bg-purple-400 rounded-full" />
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- Bot Skin Selector Modal -->
+    <Transition name="fade">
+      <div
+        v-if="showSkinSelector"
+        class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+        @click.self="showSkinSelector = false"
+      >
+        <div class="bg-white rounded-2xl w-full max-w-sm max-h-[70vh] overflow-hidden shadow-xl">
+          <!-- Header -->
+          <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="font-medium text-gray-900">เลือกเพื่อน AI ของคุณ</h3>
+            <button @click="showSkinSelector = false" class="p-1 text-gray-400 hover:text-gray-600">
+              <Icon name="lucide:x" class="w-5 h-5" />
+            </button>
+          </div>
+
+          <!-- Bot List -->
+          <div class="p-4 space-y-3 max-h-[50vh] overflow-y-auto">
+            <div v-if="loadingBots" class="text-center py-8">
+              <Icon name="lucide:loader-2" class="w-6 h-6 animate-spin text-purple-500 mx-auto" />
+              <p class="text-sm text-gray-500 mt-2">กำลังโหลด...</p>
+            </div>
+
+            <template v-else-if="botList.length > 0">
+              <button
+                v-for="bot in botList"
+                :key="bot.id"
+                @click="selectBot(bot)"
+                class="w-full p-3 rounded-xl border-2 transition-all flex items-center gap-3 text-left"
+                :class="selectedBot?.id === bot.id
+                  ? 'border-purple-500 bg-purple-50'
+                  : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'"
+              >
+                <!-- Bot Avatar -->
+                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                  <img
+                    v-if="bot.avatar"
+                    :src="bot.avatar"
+                    :alt="bot.name"
+                    class="w-full h-full object-cover"
+                  />
+                  <Icon v-else name="lucide:bot" class="w-6 h-6 text-purple-400" />
+                </div>
+
+                <!-- Bot Info -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-gray-900">{{ bot.name }}</span>
+                    <span v-if="bot.isDefault" class="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded">Default</span>
+                  </div>
+                  <p class="text-xs text-gray-500 truncate">{{ bot.description || 'AI เพื่อนที่เข้าใจคุณ' }}</p>
+                </div>
+
+                <!-- Selected indicator -->
+                <div v-if="selectedBot?.id === bot.id" class="flex-shrink-0">
+                  <Icon name="lucide:check-circle" class="w-5 h-5 text-purple-500" />
+                </div>
+              </button>
+            </template>
+
+            <div v-else class="text-center py-8 text-gray-500">
+              <Icon name="lucide:bot" class="w-8 h-8 mx-auto mb-2 text-gray-300" />
+              <p class="text-sm">ยังไม่มี Bot ที่พร้อมใช้งาน</p>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="p-4 border-t border-gray-100 bg-gray-50">
+            <p class="text-xs text-center text-gray-500">
+              เลือก AI ที่คุณอยากคุยด้วย
+            </p>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useActiveListener } from '~/composables/useActiveListener'
+import { useAuth } from '~/composables/useAuth'
 
 const props = defineProps<{
   editorContent?: string
 }>()
+
+const { user } = useAuth()
 
 const {
   currentResponse,
@@ -82,8 +180,116 @@ const {
   showBubble,
   startListening,
   analyzeText,
-  triggerIdleResponse
+  triggerIdleResponse,
+  setBotId
 } = useActiveListener()
+
+// Bot selection state
+interface BotInfo {
+  id: string
+  name: string
+  description: string
+  avatar: string | null
+  greeting: string
+  isDefault: boolean
+}
+
+const showSkinSelector = ref(false)
+const loadingBots = ref(false)
+const botList = ref<BotInfo[]>([])
+const selectedBot = ref<BotInfo | null>(null)
+
+// Load bot list from API
+const loadBotList = async () => {
+  loadingBots.value = true
+  try {
+    const response = await $fetch<{ bots: BotInfo[] }>('/api/bot/list')
+    botList.value = response.bots
+
+    // Select default bot if not already selected
+    if (!selectedBot.value && botList.value.length > 0) {
+      const defaultBot = botList.value.find(b => b.isDefault) || botList.value[0]
+      selectedBot.value = defaultBot
+      // Update the active listener with default bot
+      setBotId(defaultBot.id)
+    }
+  } catch (err) {
+    console.error('Error loading bot list:', err)
+  } finally {
+    loadingBots.value = false
+  }
+}
+
+// Select a bot
+const selectBot = async (bot: BotInfo) => {
+  selectedBot.value = bot
+  showSkinSelector.value = false
+
+  // Update the active listener with new bot ID
+  setBotId(bot.id)
+
+  // Save to database if user is logged in
+  await saveBotSelectionToDatabase(bot.id)
+}
+
+// Save bot selection to database
+const saveBotSelectionToDatabase = async (botId: string) => {
+  // Use user ID if logged in, otherwise use a device ID from localStorage
+  const userId = user.value?.uid || getDeviceId()
+
+  try {
+    await $fetch('/api/user/bot-preference', {
+      method: 'POST',
+      body: { userId, botId }
+    })
+    console.log('[AICompanion] Bot preference saved to database:', botId)
+  } catch (err) {
+    console.error('[AICompanion] Error saving bot preference:', err)
+  }
+}
+
+// Get or create a device ID for anonymous users
+const getDeviceId = (): string => {
+  if (!import.meta.client) return 'anonymous'
+
+  let deviceId = localStorage.getItem('deviceId')
+  if (!deviceId) {
+    deviceId = 'device_' + Math.random().toString(36).substring(2, 15)
+    localStorage.setItem('deviceId', deviceId)
+  }
+  return deviceId
+}
+
+// Load saved bot selection from database
+const loadSavedBotSelection = async () => {
+  const userId = user.value?.uid || getDeviceId()
+
+  try {
+    const response = await $fetch<{ botId: string | null }>('/api/user/bot-preference', {
+      method: 'GET',
+      query: { userId }
+    })
+
+    if (response.botId && botList.value.length > 0) {
+      const savedBot = botList.value.find(b => b.id === response.botId)
+      if (savedBot) {
+        selectedBot.value = savedBot
+        // Also update the active listener
+        setBotId(savedBot.id)
+        console.log('[AICompanion] Loaded bot preference from database:', savedBot.name)
+      }
+    }
+  } catch (err) {
+    console.error('[AICompanion] Error loading bot preference:', err)
+  }
+}
+
+// Watch for modal open to load bots
+watch(showSkinSelector, async (isOpen) => {
+  if (isOpen && botList.value.length === 0) {
+    await loadBotList()
+  }
+})
 
 // Watch editor content and analyze automatically
 watch(() => props.editorContent, (newContent, oldContent) => {
@@ -118,9 +324,14 @@ const mouthClass = computed(() => {
 // Idle animation timer
 let idleTimer: NodeJS.Timeout | null = null
 
-onMounted(() => {
+onMounted(async () => {
   // Start listening automatically
   startListening()
+
+  // Load bot list first
+  await loadBotList()
+  // Then load saved selection from database (will override default if found)
+  await loadSavedBotSelection()
 
   // Trigger idle responses periodically
   idleTimer = setInterval(() => {

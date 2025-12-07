@@ -2,14 +2,7 @@
 export default defineNuxtConfig({
   ssr: false,
   nitro: {
-    prerender: {
-      crawlLinks: true,
-      routes: ['/sitemap.xml', '/robots.txt'],
-      ignore: ['/admin', '/backend', '/editor']
-    },
-    output: {
-      publicDir: 'dist'
-    }
+    preset: 'vercel'
   },
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
@@ -49,10 +42,10 @@ export default defineNuxtConfig({
         { name: 'msapplication-TileColor', content: '#000000' }
       ],
       link: [
-        { rel: 'icon', type: 'image/svg+xml', href: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">📔</text></svg>' },
+        { rel: 'icon', type: 'image/png', href: '/nira.png' },
         { rel: 'canonical', href: 'https://anonymous-diary.app' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: true },
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'anonymous' },
         { href: 'https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap', rel: 'stylesheet' }
       ]
     }
@@ -92,15 +85,18 @@ export default defineNuxtConfig({
     smtpUser: process.env.NUXT_SMTP_USER || '',
     smtpPass: process.env.NUXT_SMTP_PASS || '',
 
+    // Groq API Key (server-side only for security) - FREE
+    groqApiKey: process.env.NUXT_GROQ_API_KEY || '',
+
     // Public keys (exposed to client) - map from NUXT_PUBLIC_* env vars
+
     public: {
       firebaseApiKey: process.env.NUXT_PUBLIC_FIREBASE_API_KEY || '',
       firebaseAuthDomain: process.env.NUXT_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
       firebaseProjectId: process.env.NUXT_PUBLIC_FIREBASE_PROJECT_ID || '',
       firebaseStorageBucket: process.env.NUXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
       firebaseMessagingSenderId: process.env.NUXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
-      firebaseAppId: process.env.NUXT_PUBLIC_FIREBASE_APP_ID || '',
-      grokApiKey: process.env.NUXT_PUBLIC_GROK_API_KEY || ''
+      firebaseAppId: process.env.NUXT_PUBLIC_FIREBASE_APP_ID || ''
     }
   }
 })

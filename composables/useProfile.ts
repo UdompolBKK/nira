@@ -1,41 +1,109 @@
-import { ref, watch } from 'vue'
-import { doc, getDoc, setDoc, onSnapshot, query, collection, where, getDocs } from 'firebase/firestore'
+// composables/useProfile.ts - Using API with Firebase Admin SDK
+import { ref } from 'vue'
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import { useFirebase } from './useFirebase'
 
+export interface UserProfile {
+  uid?: string
+  displayName?: string
+  slug?: string
+  photoURL?: string
+  bio?: string
+}
+
 export const useProfile = (uid: string | null) => {
-  const profile = ref<{ displayName?: string; slug?: string; photoURL?: string } | null>(null)
+  const profile = ref<UserProfile | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  if (!uid) return { profile, loading, error, saveProfile: async () => {}, uploadImage: async () => null, checkSlug: async () => false }
+  const { user } = useAuth()
+  const { storage } = useFirebase()
 
-  const { firestore, storage } = useFirebase()
-  const docRef = doc(firestore, 'users', uid as string)
-
-  // realtime listener
-  const unsub = onSnapshot(docRef, (snap) => {
-    if (snap.exists()) profile.value = snap.data() as any
-    else profile.value = null
-  }, (err) => {
-    error.value = String(err)
-  })
-
-  const saveProfile = async (data: { displayName?: string; slug?: string; photoURL?: string }) => {
+  // Get auth token for API calls
+  const getAuthToken = async (): Promise<string | null> => {
+    const firebaseUser = user.value?._firebaseUser
+    if (!firebaseUser) return null
     try {
-      loading.value = true
-      await setDoc(docRef, data, { merge: true })
+      return await firebaseUser.getIdToken()
+    } catch {
+      return null
+    }
+  }
+
+  // Return early if no uid
+  if (!uid) {
+    return {
+      profile,
+      loading,
+      error,
+      fetchProfile: async () => {},
+      saveProfile: async () => false,
+      uploadImage: async () => '',
+      checkSlug: async () => false
+    }
+  }
+
+  // Fetch profile from API
+  const fetchProfile = async () => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const token = await getAuthToken()
+      if (!token) {
+        error.value = 'กรุณาเข้าสู่ระบบ'
+        return
+      }
+
+      const response = await $fetch<{ profile: UserProfile | null }>('/api/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      profile.value = response.profile
+    } catch (err: any) {
+      error.value = err.data?.message || err.message || 'เกิดข้อผิดพลาด'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Save profile via API
+  const saveProfile = async (data: Partial<UserProfile>) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const token = await getAuthToken()
+      if (!token) {
+        error.value = 'กรุณาเข้าสู่ระบบ'
+        return false
+      }
+
+      await $fetch('/api/profile', {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+        body: data
+      })
+
+      // Update local state
+      if (profile.value) {
+        profile.value = { ...profile.value, ...data }
+      } else {
+        profile.value = data
+      }
+
       return true
     } catch (err: any) {
-      error.value = err.message || String(err)
+      error.value = err.data?.message || err.message || 'ไม่สามารถบันทึกโปรไฟล์ได้'
       return false
     } finally {
       loading.value = false
     }
   }
 
-  const uploadImage = async (file: File, onProgress?: (pct: number) => void) => {
-    return new Promise<string>(async (resolve, reject) => {
+  // Upload image - using client-side Storage (configured with public upload rules)
+  const uploadImage = async (file: File, onProgress?: (pct: number) => void): Promise<string> => {
+    return new Promise(async (resolve, reject) => {
       try {
         loading.value = true
         const path = `profiles/${uid}/avatar-${Date.now()}`
@@ -53,7 +121,8 @@ export const useProfile = (uid: string | null) => {
         }, async () => {
           try {
             const url = await getDownloadURL(sRef)
-            await setDoc(docRef, { photoURL: url }, { merge: true })
+            // Update profile via API
+            await saveProfile({ photoURL: url })
             resolve(url)
           } catch (err: any) {
             error.value = err.message || String(err)
@@ -69,16 +138,28 @@ export const useProfile = (uid: string | null) => {
     })
   }
 
-  const checkSlug = async (slug: string) => {
+  // Check if slug is already taken via API
+  const checkSlug = async (slug: string): Promise<boolean> => {
     try {
-      const usersCol = collection(firestore, 'users')
-      const q = query(usersCol, where('slug', '==', slug))
-      const snaps = await getDocs(q)
-      return snaps.empty === false
-    } catch (err) {
+      const response = await $fetch<{ exists: boolean }>('/api/profile/check-slug', {
+        params: { slug }
+      })
+      return response.exists
+    } catch {
       return false
     }
   }
 
-  return { profile, loading, error, saveProfile, uploadImage, checkSlug, _unsub: unsub }
+  // Initial fetch
+  fetchProfile()
+
+  return {
+    profile,
+    loading,
+    error,
+    fetchProfile,
+    saveProfile,
+    uploadImage,
+    checkSlug
+  }
 }

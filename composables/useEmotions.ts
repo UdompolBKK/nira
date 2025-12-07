@@ -1,19 +1,5 @@
 // composables/useEmotions.ts
-// Emotion reactions system (Like, Sad, Happy)
-
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  deleteDoc,
-  updateDoc,
-  query,
-  where,
-  increment,
-  Timestamp
-} from 'firebase/firestore'
+// Emotion reactions system (Like, Sad, Happy) - Using API with Firebase Admin SDK
 
 export type EmotionType = 'like' | 'sad' | 'happy'
 
@@ -26,25 +12,32 @@ export interface Emotion {
 }
 
 export const useEmotions = () => {
-  const { $firestore } = useNuxtApp()
   const { user } = useAuth()
 
   const loading = ref(false)
   const error = ref<string | null>(null)
 
+  // Get Firebase auth token
+  const getAuthToken = async (): Promise<string> => {
+    const firebaseUser = user.value?._firebaseUser
+    if (!firebaseUser) {
+      throw new Error('กรุณาเข้าสู่ระบบก่อน')
+    }
+    const token = await firebaseUser.getIdToken()
+    return token
+  }
+
   // Get user's emotion on a post
   const getUserEmotion = async (postId: string): Promise<EmotionType | null> => {
-    if (!$firestore || !user.value) return null
+    if (!user.value) return null
 
     try {
-      const emotionId = `${postId}_${user.value.uid}`
-      const emotionRef = doc($firestore, 'emotions', emotionId)
-      const emotionDoc = await getDoc(emotionRef)
+      const token = await getAuthToken()
+      const response = await $fetch<{ emotion: EmotionType | null }>(`/api/emotions/${postId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
 
-      if (emotionDoc.exists()) {
-        return emotionDoc.data().type as EmotionType
-      }
-      return null
+      return response.emotion
     } catch (err) {
       console.error('Error getting user emotion:', err)
       return null
@@ -53,57 +46,25 @@ export const useEmotions = () => {
 
   // Toggle emotion on a post
   const toggleEmotion = async (postId: string, type: EmotionType): Promise<boolean> => {
-    if (!$firestore || !user.value) {
+    if (!user.value) {
       error.value = 'กรุณาเข้าสู่ระบบก่อน'
       return false
     }
 
     loading.value = true
+    error.value = null
+
     try {
-      const emotionId = `${postId}_${user.value.uid}`
-      const emotionRef = doc($firestore, 'emotions', emotionId)
-      const postRef = doc($firestore, 'posts', postId)
-
-      const emotionDoc = await getDoc(emotionRef)
-
-      if (emotionDoc.exists()) {
-        const existingType = emotionDoc.data().type as EmotionType
-
-        if (existingType === type) {
-          // Same emotion - remove it
-          await deleteDoc(emotionRef)
-          await updateDoc(postRef, {
-            [`${type}Count`]: increment(-1)
-          })
-        } else {
-          // Different emotion - update it
-          await setDoc(emotionRef, {
-            postId,
-            userId: user.value.uid,
-            type,
-            createdAt: Timestamp.now()
-          })
-          await updateDoc(postRef, {
-            [`${existingType}Count`]: increment(-1),
-            [`${type}Count`]: increment(1)
-          })
-        }
-      } else {
-        // New emotion
-        await setDoc(emotionRef, {
-          postId,
-          userId: user.value.uid,
-          type,
-          createdAt: Timestamp.now()
-        })
-        await updateDoc(postRef, {
-          [`${type}Count`]: increment(1)
-        })
-      }
+      const token = await getAuthToken()
+      await $fetch('/api/emotions/toggle', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: { postId, type }
+      })
 
       return true
     } catch (err: any) {
-      error.value = err.message
+      error.value = err.data?.message || err.message || 'เกิดข้อผิดพลาด'
       return false
     } finally {
       loading.value = false
@@ -112,21 +73,9 @@ export const useEmotions = () => {
 
   // Get emotion counts for a post
   const getEmotionCounts = async (postId: string): Promise<{ like: number; sad: number; happy: number }> => {
-    if (!$firestore) return { like: 0, sad: 0, happy: 0 }
-
     try {
-      const postRef = doc($firestore, 'posts', postId)
-      const postDoc = await getDoc(postRef)
-
-      if (postDoc.exists()) {
-        const data = postDoc.data()
-        return {
-          like: data.likeCount || 0,
-          sad: data.sadCount || 0,
-          happy: data.happyCount || 0
-        }
-      }
-      return { like: 0, sad: 0, happy: 0 }
+      const response = await $fetch<{ counts: { like: number; sad: number; happy: number } }>(`/api/emotions/counts/${postId}`)
+      return response.counts
     } catch (err) {
       console.error('Error getting emotion counts:', err)
       return { like: 0, sad: 0, happy: 0 }

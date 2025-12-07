@@ -9,12 +9,38 @@ export const getFirebaseAdmin = () => {
   if (!adminApp && getApps().length === 0) {
     const config = useRuntimeConfig()
 
+    // Process private key - handle multiple formats
+    let privateKey = config.firebaseAdminPrivateKey || ''
+
+    // Remove surrounding quotes if present (dotenv may include them)
+    if ((privateKey.startsWith('"') && privateKey.endsWith('"')) ||
+        (privateKey.startsWith("'") && privateKey.endsWith("'"))) {
+      privateKey = privateKey.slice(1, -1)
+    }
+
+    // Replace literal \n with actual newlines
+    privateKey = privateKey.replace(/\\n/g, '\n')
+
+    // Debug: log config presence (not values)
+    console.log('Firebase Admin Config:', {
+      hasProjectId: !!config.firebaseAdminProjectId,
+      hasClientEmail: !!config.firebaseAdminClientEmail,
+      hasPrivateKey: !!privateKey,
+      privateKeyLength: privateKey.length,
+      privateKeyStartsWith: privateKey.substring(0, 30),
+      privateKeyEndsWith: privateKey.substring(privateKey.length - 30)
+    })
+
+    if (!config.firebaseAdminProjectId || !config.firebaseAdminClientEmail || !privateKey) {
+      throw new Error('Firebase Admin SDK credentials are not configured properly')
+    }
+
     // Initialize with service account credentials
     adminApp = initializeApp({
       credential: cert({
         projectId: config.firebaseAdminProjectId,
         clientEmail: config.firebaseAdminClientEmail,
-        privateKey: config.firebaseAdminPrivateKey?.replace(/\\n/g, '\n')
+        privateKey: privateKey
       }),
       storageBucket: config.public.firebaseStorageBucket
     })
