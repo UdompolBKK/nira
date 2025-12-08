@@ -24,6 +24,7 @@ export interface Post {
   isLocked: boolean
   tags: string[]
   moodCategory: MoodCategory
+  postType?: 'vent' | 'story'
   likeCount: number
   sadCount: number
   happyCount: number
@@ -39,6 +40,7 @@ export interface CreatePostData {
   isLocked: boolean
   tags: string[]
   moodCategory: MoodCategory
+  postType?: 'vent' | 'story'
 }
 
 export const usePosts = () => {

@@ -1,16 +1,36 @@
 <template>
-  <header class="sticky top-0 z-50 bg-white border-b border-gray-200">
+  <header style="z-index: 2000;" class="sticky top-0 z-50 bg-white border-b border-gray-200">
     <nav class="mx-auto max-w-full px-4 py-3 md:px-8">
       <div class="flex items-center justify-between">
-        <!-- Left: Logo + Navigation -->
-        <div class="flex items-center gap-8">
+        <!-- Mobile: Hamburger Menu Button (Left) -->
+        <button
+          class="inline-flex items-center justify-center rounded-lg bg-gray-100 p-2 text-gray-700 md:hidden"
+          @click="mobileMenuOpen = !mobileMenuOpen"
+        >
+          <svg
+            class="h-6 w-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              :d="mobileMenuOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'"
+            />
+          </svg>
+        </button>
+
+        <!-- Left: Logo + Navigation (Desktop) / Center: Logo (Mobile) -->
+        <div class="flex items-center gap-8 md:flex-1">
           <!-- Logo -->
-          <NuxtLink to="/" class="flex items-center gap-2">
+          <NuxtLink to="/" class="flex items-center gap-2 md:mr-0 absolute left-1/2 transform -translate-x-1/2 md:relative md:left-auto md:transform-none">
             <img src="/nira.png" alt="Nira" class="h-10 w-auto" />
           </NuxtLink>
 
-          <!-- Navigation Links - Desktop -->
-          <div class="hidden gap-8 md:flex items-center">
+          <!-- Navigation Links - Desktop Only -->
+          <div class="hidden gap-8 md:flex items-center md:ml-8">
             <NuxtLink
               to="/"
               class="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
@@ -24,10 +44,16 @@
               บันทึกของฉัน
             </NuxtLink>
             <NuxtLink
-              to="/browse"
+              to="/stories"
               class="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
             >
-              เรื่องราวของคนอื่น
+              เรื่องราวชีวิต
+            </NuxtLink>
+            <NuxtLink
+              to="/problems"
+              class="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+            >
+              ปัญหาที่ได้รับการระบาย
             </NuxtLink>
             <NuxtLink
               to="/articles"
@@ -45,9 +71,9 @@
         </div>
 
         <!-- Right Section -->
-        <div class="flex gap-4 items-center relative">
-          <!-- Notification Bell (when logged in) -->
-          <div v-if="user" class="relative">
+        <div class="flex gap-4 items-center relative z-10">
+          <!-- Notification Bell (when logged in) - Desktop Only -->
+          <div v-if="user" class="relative hidden md:block">
             <button
               @click="notificationOpen = !notificationOpen"
               class="relative p-2 text-gray-600 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-50"
@@ -139,11 +165,11 @@
             </Transition>
           </div>
 
-          <!-- If logged in: show account menu -->
+          <!-- If logged in: show account menu (Mobile: photo + arrow only, Desktop: photo + name + arrow) -->
           <div v-if="user" class="relative">
             <button
               @click="accountMenuOpen = !accountMenuOpen"
-              class="flex items-center gap-2 px-3 py-2 text-gray-900 hover:bg-gray-50 rounded-lg transition-colors focus:outline-none focus:ring-0"
+              class="flex items-center gap-2 px-2 md:px-3 py-2 text-gray-900 hover:bg-gray-50 rounded-lg transition-colors focus:outline-none focus:ring-0"
             >
               <img v-if="profile?.photoURL" :src="profile.photoURL" alt="avatar" class="h-8 w-8 rounded-full object-cover" />
               <div v-else class="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-600">
@@ -190,46 +216,18 @@
             </div>
           </div>
 
-          <!-- If not logged in: show login/signup (but only after auth loading is complete) -->
-          <template v-else-if="!authLoading">
-            <NuxtLink
-              to="/signup"
-              class="rounded-lg border-2 border-gray-900 px-6 py-2 font-medium text-gray-900 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-0"
-            >
-              สมัครสมาชิก
-            </NuxtLink>
-
-            <NuxtLink
-              to="/login"
-              class="rounded-lg bg-black px-6 py-2 font-medium text-white hover:bg-gray-900 transition-colors focus:outline-none focus:ring-0"
-              style="color: #fff"
-            >
-              เข้าสู่ระบบ
-            </NuxtLink>
-          </template>
+          <!-- If not logged in: show login button on mobile (right side) -->
+          <NuxtLink
+            v-else-if="!authLoading"
+            to="/login"
+            class="rounded-lg bg-black px-4 md:px-6 py-2 font-medium text-white hover:bg-gray-900 transition-colors focus:outline-none focus:ring-0 text-sm md:text-base"
+            style="color: #fff"
+          >
+            เข้าสู่ระบบ
+          </NuxtLink>
 
           <!-- Loading state while auth initializes -->
-          <div v-else class="h-9 w-32 bg-gray-100 rounded-lg animate-pulse"></div>
-
-          <!-- Mobile Menu Button -->
-          <button
-            class="inline-flex items-center justify-center rounded-lg bg-gray-100 p-2 text-gray-700 md:hidden"
-            @click="mobileMenuOpen = !mobileMenuOpen"
-          >
-            <svg
-              class="h-6 w-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                :d="mobileMenuOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'"
-              />
-            </svg>
-          </button>
+          <div v-else class="h-9 w-20 md:w-32 bg-gray-100 rounded-lg animate-pulse"></div>
         </div>
       </div>
 
@@ -238,13 +236,54 @@
         v-if="mobileMenuOpen"
         class="mt-4 space-y-3 border-t pt-4 md:hidden"
       >
+        <!-- Navigation Links -->
+        <NuxtLink
+          to="/"
+          class="block rounded-lg px-6 py-2 font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+          @click="mobileMenuOpen = false"
+        >
+          หน้าหลัก
+        </NuxtLink>
+        <NuxtLink
+          to="/my-activity"
+          class="block rounded-lg px-6 py-2 font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+          @click="mobileMenuOpen = false"
+        >
+          บันทึกของฉัน
+        </NuxtLink>
+        <NuxtLink
+          to="/browse"
+          class="block rounded-lg px-6 py-2 font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+          @click="mobileMenuOpen = false"
+        >
+          เรื่องราวของคนอื่น
+        </NuxtLink>
+        <NuxtLink
+          to="/articles"
+          class="block rounded-lg px-6 py-2 font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+          @click="mobileMenuOpen = false"
+        >
+          บทความ
+        </NuxtLink>
+        <NuxtLink
+          to="/about"
+          class="block rounded-lg px-6 py-2 font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+          @click="mobileMenuOpen = false"
+        >
+          เกี่ยวกับเรา
+        </NuxtLink>
+
+        <!-- Auth Section (for logged in users only) -->
         <template v-if="user">
+          <!-- Divider -->
+          <div class="border-t pt-3"></div>
+
           <NuxtLink
-            to="/my-activity"
+            to="/account"
             class="block rounded-lg px-6 py-2 font-medium text-gray-900 hover:bg-gray-50 transition-colors"
             @click="mobileMenuOpen = false"
           >
-            ✍️ เขียนบันทึก
+            จัดการบัญชี
           </NuxtLink>
           <button
             @click="handleLogout"
@@ -252,22 +291,6 @@
           >
             ออกจากระบบ
           </button>
-        </template>
-        <template v-else>
-          <NuxtLink
-            to="/signup"
-            class="block rounded-lg border-2 border-gray-900 px-6 py-2 font-medium text-gray-900 hover:bg-gray-50 transition-colors text-center focus:outline-none focus:ring-0"
-            @click="mobileMenuOpen = false"
-          >
-            สมัครสมาชิก
-          </NuxtLink>
-          <NuxtLink
-            to="/login"
-            class="block rounded-lg bg-black px-6 py-2 font-medium text-white hover:bg-gray-900 transition-colors text-center focus:outline-none focus:ring-0"
-            @click="mobileMenuOpen = false"
-          >
-            เข้าสู่ระบบ
-          </NuxtLink>
         </template>
       </div>
     </nav>

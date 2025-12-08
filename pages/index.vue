@@ -2,17 +2,19 @@
   <div class="w-full">
     <!-- Hero Section with Background Image -->
     <section class="relative h-screen w-full overflow-hidden">
-      <!-- Background Image -->
+      <!-- Background Images (Cross-fade) -->
       <div class="absolute inset-0 w-full h-full">
-        <div
-          v-for="(img, idx) in images"
-          v-show="currentImage === idx"
-          :key="img"
-          class="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
-          :style="{ backgroundImage: `url(${img})` }"
-        >
-          <div class="absolute inset-0 bg-black/40"></div>
-        </div>
+        <TransitionGroup name="hero-fade">
+          <div
+            v-for="(image, index) in heroImages"
+            v-show="index === currentImage"
+            :key="`hero-${index}`"
+            class="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat hero-zoom"
+            :style="{ backgroundImage: `url(${image})` }"
+          >
+            <div class="absolute inset-0 bg-black/40"></div>
+          </div>
+        </TransitionGroup>
       </div>
 
       <!-- Hero Content -->
@@ -53,9 +55,9 @@
           <!-- Left: Image -->
           <div class="order-2 md:order-1">
             <img
-              src="/mockimage.jpg"
+              src="/imghome.png"
               alt="Writing diary"
-              class="w-full rounded-2xl shadow-lg"
+              class="w-full rounded-2xl"
             />
           </div>
 
@@ -126,89 +128,50 @@
       </div>
     </section>
 
-    <!-- Featured Posts Section -->
-    <section class="py-20 px-4 md:px-8 bg-white">
-      <div class="mx-auto max-w-6xl">
+    <!-- Recent Vent Posts Section -->
+    <section class="py-20 bg-white">
+      <div class="mx-auto max-w-7xl px-4 md:px-8">
         <!-- Section Title -->
         <div class="text-center mb-12">
           <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            เรื่องราวใหม่
+            การระบายปัญหาล่าสุด
           </h2>
+          <p class="text-gray-600 text-sm">
+            บันทึกการระบายความรู้สึกล่าสุดจากผู้ใช้ในชุมชน
+          </p>
         </div>
 
-        <!-- Posts Carousel -->
-        <div class="relative px-12">
-          <!-- Navigation Buttons -->
-          <button
-            @click="previousPost"
-            class="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-gray-50 transition-colors border border-gray-200"
+        <!-- Loading State -->
+        <div v-if="postsLoading" class="text-center py-12">
+          <Icon name="lucide:loader-2" class="w-12 h-12 mx-auto mb-4 text-gray-400 animate-spin" />
+          <p class="text-gray-500">กำลังโหลดบันทึก...</p>
+        </div>
+
+        <!-- Posts Slider with Splide -->
+        <div v-else-if="recentVentPosts.length > 0">
+          <Splide :options="splideOptions" class="vent-splide">
+            <SplideSlide v-for="post in recentVentPosts" :key="post.id">
+              <div style="padding-bottom: 20px;">
+              <VentCard :post="post" variant="compact" />
+              </div>
+            </SplideSlide>
+          </Splide>
+        </div>
+
+        <!-- Empty State -->
+        <div v-else class="text-center py-12">
+          <Icon name="lucide:file-text" class="w-16 h-16 mx-auto mb-4 text-gray-300" />
+          <p class="text-gray-500 mb-4">ยังไม่มีบันทึกการระบาย</p>
+          <NuxtLink
+            to="/my-activity"
+            class="inline-flex items-center justify-center rounded-full border-2 border-gray-900 px-8 py-2 font-medium text-gray-900 hover:bg-gray-50 transition-colors text-sm"
           >
-            <Icon name="lucide:chevron-left" class="w-5 h-5 text-gray-600" />
-          </button>
-
-          <button
-            @click="nextPost"
-            class="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-gray-50 transition-colors border border-gray-200"
-          >
-            <Icon name="lucide:chevron-right" class="w-5 h-5 text-gray-600" />
-          </button>
-
-          <!-- Posts Grid -->
-          <div class="grid md:grid-cols-2 gap-6">
-            <!-- Post Card 1 -->
-            <div class="bg-white rounded-2xl shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow">
-              <div class="flex items-start gap-3 mb-4">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Memome" alt="Avatar" class="w-12 h-12 rounded-full bg-gray-100" />
-                <div class="flex-1">
-                  <h4 class="font-semibold text-gray-900">Memome</h4>
-                  <p class="text-xs text-gray-500">@memome</p>
-                </div>
-              </div>
-              <p class="text-gray-700 text-sm mb-4 leading-relaxed">
-                "คนที่คุณควบคุมเสมอกว่าอาจไม่ใช่คนที่ช่วยเหลือคุณได้จริง บางครั้งการปล่อยวางบันทึกของคุณจริงมีค่า"
-              </p>
-              <div class="flex items-center gap-4 text-xs text-gray-500">
-                <div class="flex items-center gap-1">
-                  <Icon name="lucide:message-circle" class="w-4 h-4" />
-                  <span>25</span>
-                </div>
-                <div class="flex items-center gap-1">
-                  <Icon name="lucide:heart" class="w-4 h-4 text-red-400" />
-                  <span>123</span>
-                </div>
-                <span class="ml-auto">Last Update 25 minute ago</span>
-              </div>
-            </div>
-
-            <!-- Post Card 2 -->
-            <div class="bg-white rounded-2xl shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow">
-              <div class="flex items-start gap-3 mb-4">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Memome2" alt="Avatar" class="w-12 h-12 rounded-full bg-gray-100" />
-                <div class="flex-1">
-                  <h4 class="font-semibold text-gray-900">Memome</h4>
-                  <p class="text-xs text-gray-500">@memome</p>
-                </div>
-              </div>
-              <p class="text-gray-700 text-sm mb-4 leading-relaxed">
-                "คนที่คุณควบคุมเสมอกว่าอาจไม่ใช่คนที่ช่วยเหลือคุณได้จริง บางครั้งการปล่อยวางบันทึกของคุณจริงมีค่า"
-              </p>
-              <div class="flex items-center gap-4 text-xs text-gray-500">
-                <div class="flex items-center gap-1">
-                  <Icon name="lucide:message-circle" class="w-4 h-4" />
-                  <span>25</span>
-                </div>
-                <div class="flex items-center gap-1">
-                  <Icon name="lucide:heart" class="w-4 h-4 text-red-400" />
-                  <span>123</span>
-                </div>
-                <span class="ml-auto">Last Update 25 minute ago</span>
-              </div>
-            </div>
-          </div>
+            เริ่มเขียนบันทึก
+          </NuxtLink>
         </div>
 
         <!-- View All Button -->
-        <div class="text-center mt-12">
+        <div v-if="recentVentPosts.length > 0" class="text-center mt-12">
           <NuxtLink
             to="/browse"
             class="inline-flex items-center justify-center rounded-full border-2 border-gray-900 px-10 py-3 font-medium text-gray-900 hover:bg-gray-50 transition-colors"
@@ -222,6 +185,10 @@
 </template>
 
 <script setup lang="ts">
+import { MOOD_CATEGORIES, type Post } from '~/composables/usePosts'
+import { Splide, SplideSlide } from '@splidejs/vue-splide'
+import '@splidejs/vue-splide/css'
+
 definePageMeta({
   layout: 'default'
 })
@@ -236,37 +203,219 @@ useHead({
   ]
 })
 
-const images = [
-  'https://images.unsplash.com/photo-1507238691740-e6d7c3b2b698?w=1200&h=800&fit=crop',
-  'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?w=1200&h=800&fit=crop',
-  'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?w=1200&h=800&fit=crop'
-]
-
+// Hero Images - Fetched from Firebase
+const heroImages = ref<string[]>([])
 const currentImage = ref(0)
-const currentPostSet = ref(0)
 const showModal = ref(true)
+
+// Recent Vent Posts
+const recentVentPosts = ref<Post[]>([])
+const postsLoading = ref(false)
 
 let imageTimer: NodeJS.Timeout | null = null
 
-onMounted(() => {
+// Splide Carousel Settings
+const splideOptions = {
+  type: 'loop',
+  perPage: 3,
+  perMove: 1,
+  gap: '1rem',
+  padding: '3rem',
+  arrows: true,
+  pagination: false,
+  breakpoints: {
+    1024: {
+      perPage: 2,
+    },
+    640: {
+      perPage: 1,
+      padding: '1rem',
+    }
+  }
+}
+
+// Load hero banner images from API
+const loadHeroImages = async () => {
+  try {
+    const response = await $fetch<{ images: Array<{ id: string; url: string; order: number; isActive: boolean }> }>('/api/hero-images')
+    heroImages.value = response.images.map(img => img.url)
+
+    // Fallback to default images if none returned
+    if (heroImages.value.length === 0) {
+      heroImages.value = [
+        'https://images.unsplash.com/photo-1507238691740-e6d7c3b2b698?w=1200&h=800&fit=crop',
+        'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?w=1200&h=800&fit=crop',
+        'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?w=1200&h=800&fit=crop'
+      ]
+    }
+  } catch (error) {
+    console.error('[index] Error loading hero images:', error)
+    // Use default images on error
+    heroImages.value = [
+      'https://images.unsplash.com/photo-1507238691740-e6d7c3b2b698?w=1200&h=800&fit=crop',
+      'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?w=1200&h=800&fit=crop',
+      'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?w=1200&h=800&fit=crop'
+    ]
+  }
+}
+
+// Load recent vents (latest 10 vents)
+const loadRecentVentPosts = async () => {
+  postsLoading.value = true
+  try {
+    const response = await $fetch<{ vents: any[] }>('/api/vents', {
+      params: {
+        limit: '10' // Show 10 latest vents
+      }
+    })
+
+    console.log('[index] Loaded vents:', response.vents.length, response.vents)
+
+    recentVentPosts.value = response.vents.map((data: any) => ({
+      id: data.id,
+      userId: data.userId,
+      authorName: data.authorName || 'ไม่ระบุชื่อ',
+      authorSlug: data.authorSlug,
+      authorPhoto: data.authorPhoto,
+      content: data.content,
+      excerpt: data.excerpt || data.content?.replace(/<[^>]*>/g, '').substring(0, 150),
+      visibility: data.visibility || 'public',
+      isLocked: data.isLocked || false,
+      tags: data.tags || [],
+      moodCategory: data.moodCategory || 'normal',
+      likeCount: typeof data.likeCount === 'number' ? data.likeCount : (Array.isArray(data.likeCount) ? data.likeCount.length : 0),
+      sadCount: typeof data.sadCount === 'number' ? data.sadCount : 0,
+      happyCount: typeof data.happyCount === 'number' ? data.happyCount : 0,
+      commentCount: typeof data.commentCount === 'number' ? data.commentCount : 0,
+      viewCount: typeof data.viewCount === 'number' ? data.viewCount : 0,
+      createdAt: new Date(data.createdAt),
+      updatedAt: new Date(data.updatedAt)
+    }))
+  } catch (error) {
+    console.error('[index] Error loading recent vent posts:', error)
+    recentVentPosts.value = []
+  } finally {
+    postsLoading.value = false
+  }
+}
+
+// Format time ago
+const formatTimeAgo = (date: Date) => {
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) return 'เมื่อสักครู่'
+  if (diffMins < 60) return `${diffMins} นาทีที่แล้ว`
+  if (diffHours < 24) return `${diffHours} ชั่วโมงที่แล้ว`
+  if (diffDays < 7) return `${diffDays} วันที่แล้ว`
+
+  return date.toLocaleDateString('th-TH', {
+    day: 'numeric',
+    month: 'short',
+    year: diffDays > 365 ? 'numeric' : undefined
+  })
+}
+
+onMounted(async () => {
+  // Load hero images first
+  await loadHeroImages()
+
+  // Start hero image carousel
   imageTimer = setInterval(() => {
-    currentImage.value = (currentImage.value + 1) % images.length
+    currentImage.value = (currentImage.value + 1) % heroImages.value.length
   }, 4000)
+
+  // Load recent vent posts
+  await loadRecentVentPosts()
 })
 
 onBeforeUnmount(() => {
   if (imageTimer) clearInterval(imageTimer)
 })
-
-const nextPost = () => {
-  currentPostSet.value = (currentPostSet.value + 1) % 3
-}
-
-const previousPost = () => {
-  currentPostSet.value = currentPostSet.value === 0 ? 2 : currentPostSet.value - 1
-}
 </script>
 
 <style scoped>
-/* Custom animations can be added here if needed */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Hero image zoom animation */
+.hero-zoom {
+  animation: zoom-out 15s ease-out forwards;
+}
+
+@keyframes zoom-out {
+  from {
+    transform: scale(1.1);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* Cross-fade transition for hero images */
+.hero-fade-enter-active {
+  transition: opacity 1.5s ease-in-out;
+  position: absolute;
+  z-index: 1;
+}
+
+.hero-fade-leave-active {
+  transition: opacity 1.5s ease-in-out;
+  position: absolute;
+  z-index: 0;
+}
+
+.hero-fade-enter-from {
+  opacity: 0;
+}
+
+.hero-fade-leave-to {
+  opacity: 0;
+}
+
+.hero-fade-enter-to {
+  opacity: 1;
+}
+
+.hero-fade-leave-from {
+  opacity: 1;
+}
+
+/* Splide Carousel custom styles */
+.vent-splide {
+  padding-bottom: 2rem;
+}
+
+.vent-splide :deep(.splide__arrow) {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  opacity: 1;
+}
+
+.vent-splide :deep(.splide__arrow:hover) {
+  background: #f9fafb;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+}
+
+.vent-splide :deep(.splide__arrow svg) {
+  fill: #374151;
+}
+
+.vent-splide :deep(.splide__arrow--prev) {
+  left: -24px;
+}
+
+.vent-splide :deep(.splide__arrow--next) {
+  right: -24px;
+}
 </style>

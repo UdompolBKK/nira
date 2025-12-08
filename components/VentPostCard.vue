@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white rounded-2xl shadow-md border border-gray-200 hover:shadow-lg transition-all overflow-hidden">
+  <div class="bg-white rounded-2xl shadow-md border border-gray-200 hover:shadow-lg transition-all overflow-hidden" style="margin-bottom: 20px !important;">
     <!-- Post Header -->
     <div class="p-6 pb-4">
       <div class="flex items-start gap-4">

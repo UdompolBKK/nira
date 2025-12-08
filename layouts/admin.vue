@@ -175,6 +175,17 @@
           <span>จัดการหน้าเกี่ยวกับเรา</span>
         </NuxtLink>
 
+        <!-- Hero Banner Images -->
+        <NuxtLink
+          to="/admin/hero-images"
+          class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-purple-50 transition-colors text-gray-700"
+          active-class="bg-purple-100 text-purple-700 font-semibold"
+          @click="closeSidebar"
+        >
+          <Icon name="lucide:image" class="w-5 h-5" />
+          <span>จัดการ Hero Banner</span>
+        </NuxtLink>
+
         <!-- Divider -->
         <div class="border-t border-gray-200 my-4"></div>
 

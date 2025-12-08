@@ -4,11 +4,27 @@
     <AICompanion :editor-content="content" />
 
     <main class="max-w-2xl mx-auto px-4 py-6">
+      <!-- User Info Section -->
+      <div v-if="!profileLoading && userProfile" class="mb-8 text-center">
+        <div class="flex flex-col items-center gap-3">
+          <img
+            :src="userProfile.photoURL || '/images/default-avatar.png'"
+            :alt="userProfile.displayName || 'User'"
+            class="w-20 h-20 rounded-full object-cover border-2 border-gray-200 shadow-sm"
+          />
+          <div class="text-lg font-semibold text-gray-900">
+            {{ userProfile.displayName || 'ผู้ใช้นิรนาม' }}
+          </div>
+        </div>
+      </div>
+
+      <h2 style="text-align: center;" class="text-2xl font-bold text-gray-900 mb-8">
+          เริ่มต้นตั้งแต่ฉันจำความได้
+        </h2>
       <!-- Timeline container -->
       <div class="relative">
         <!-- Timeline line - thin and subtle -->
         <div class="absolute left-[11px] top-0 bottom-0 w-px bg-gray-200" />
-
         <!-- User's previous posts (sorted oldest to newest) -->
         <TransitionGroup name="post" tag="div">
           <template v-for="(post, index) in posts" :key="post.id">
@@ -355,6 +371,10 @@ useHead({
 const { user } = useAuth()
 const { posts, loading, hasMore, createPost, updatePost, deletePost, getUserPosts, createInsertedPost, error } = usePosts()
 
+// User profile for anonymous name and photo
+const userProfile = ref<{ displayName: string | null; photoURL: string | null } | null>(null)
+const profileLoading = ref(true)
+
 // Editor state
 const content = ref('')
 const selectedMood = ref<MoodCategory>('normal')
@@ -433,7 +453,8 @@ const savePost = async () => {
     visibility: 'public',
     isLocked: isLocked.value,
     tags: [],
-    moodCategory: selectedMood.value
+    moodCategory: selectedMood.value,
+    postType: 'vent' // Editor creates vent posts
   })
 
   saving.value = false
@@ -587,6 +608,44 @@ const formatDate = (date: Date) => {
   })
 }
 
+// Load user profile
+const loadUserProfile = async () => {
+  if (!user.value?._firebaseUser) {
+    profileLoading.value = false
+    return
+  }
+
+  try {
+    const token = await user.value._firebaseUser.getIdToken()
+    const response = await $fetch<{ profile: any; exists: boolean }>('/api/user/profile', {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+    if (response.exists && response.profile) {
+      userProfile.value = {
+        displayName: response.profile.displayName || 'ผู้ใช้นิรนาม',
+        photoURL: response.profile.photoURL || '/images/default-avatar.png'
+      }
+    } else {
+      userProfile.value = {
+        displayName: 'ผู้ใช้นิรนาม',
+        photoURL: '/images/default-avatar.png'
+      }
+    }
+  } catch (err) {
+    console.error('Error loading profile:', err)
+    userProfile.value = {
+      displayName: 'ผู้ใช้นิรนาม',
+      photoURL: '/images/default-avatar.png'
+    }
+  } finally {
+    profileLoading.value = false
+  }
+}
+
 // Load user's posts on mount
 onMounted(async () => {
   // Check mobile on mount and resize
@@ -594,7 +653,10 @@ onMounted(async () => {
   window.addEventListener('resize', checkMobile)
 
   if (user.value) {
-    await getUserPosts(user.value.uid, 10)
+    await Promise.all([
+      getUserPosts(user.value.uid, 10),
+      loadUserProfile()
+    ])
   }
 })
 

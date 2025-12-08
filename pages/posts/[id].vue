@@ -164,8 +164,7 @@ import { MOOD_CATEGORIES } from '~/composables/usePosts'
 import type { EmotionType } from '~/composables/useEmotions'
 
 definePageMeta({
-  layout: false,
-  middleware: 'auth'
+  layout: false
 })
 
 const route = useRoute()
