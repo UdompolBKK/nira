@@ -96,6 +96,9 @@ export default defineNuxtConfig({
     },
     optimizeDeps: {
       include: ['@splidejs/vue-splide']
+    },
+    ssr: {
+      noExternal: ['@splidejs/vue-splide']
     }
   },
 
