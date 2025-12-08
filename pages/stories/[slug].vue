@@ -72,21 +72,16 @@
 
             <!-- Locked Post -->
             <div v-if="post.isLocked" class="relative">
-              <!-- Lock Icon Badge -->
-              <div class="absolute -top-1 -left-1 z-10 bg-gray-900 text-white rounded-full p-2 shadow-lg">
-                <Icon name="lucide:lock" class="w-4 h-4" />
-              </div>
-
               <!-- Fake blurred text that looks realistic -->
               <div class="relative">
-                <div class="text-gray-800 leading-relaxed prose prose-sm max-w-none blur-md select-none pointer-events-none opacity-60">
+                <div class="text-gray-800 leading-relaxed prose prose-sm max-w-none blur-sm select-none pointer-events-none">
                   {{ generateFakeText(post.contentLength || 500) }}
                 </div>
-                <div class="absolute inset-0 flex items-center justify-center bg-white/70">
-                  <div class="text-center p-6 bg-white/90 rounded-lg shadow-lg border-2 border-gray-300">
-                    <Icon name="lucide:lock" class="w-10 h-10 text-gray-600 mx-auto mb-2" />
+                <div class="absolute inset-0 flex items-center justify-center bg-white/40">
+                  <div class="text-center p-4 bg-white/80 rounded-lg shadow-md border border-gray-300">
+                    <Icon name="lucide:lock" class="w-8 h-8 text-gray-600 mx-auto mb-2" />
                     <p class="text-sm text-gray-700 font-semibold">เนื้อหาถูกล็อค</p>
-                    <p class="text-xs text-gray-500 mt-1">ไม่สามารถดูได้ในหน้านี้</p>
+                    <p class="text-xs text-gray-500 mt-1">เพิ่มเพื่อนเพื่ออ่านเนื้อหานี้</p>
                   </div>
                 </div>
               </div>
