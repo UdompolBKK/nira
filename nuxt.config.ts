@@ -93,17 +93,7 @@ export default defineNuxtConfig({
           additionalData: '@import "~/assets/scss/_variables.scss"; @import "~/assets/scss/_mixins.scss";'
         }
       }
-    },
-    optimizeDeps: {
-      include: ['@splidejs/vue-splide', '@splidejs/splide']
-    },
-    ssr: {
-      noExternal: ['@splidejs/vue-splide', '@splidejs/splide']
     }
-  },
-
-  build: {
-    transpile: ['@splidejs/vue-splide', '@splidejs/splide']
   },
 
   runtimeConfig: {
