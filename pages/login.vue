@@ -46,6 +46,29 @@
 
 <script setup lang="ts">
 import { useAuth } from '~/composables/useAuth'
+
+definePageMeta({
+  layout: 'default'
+})
+
+useHead({
+  title: 'เข้าสู่ระบบ - บันทึกนิรนาม',
+  meta: [
+    {
+      name: 'description',
+      content: 'เข้าสู่ระบบเพื่อเขียนบันทึกส่วนตัว คุยกับ AI companion และแชร์เรื่องราวกับชุมชนนิรนาม'
+    },
+    {
+      property: 'og:title',
+      content: 'เข้าสู่ระบบ - บันทึกนิรนาม'
+    },
+    {
+      property: 'og:description',
+      content: 'เข้าสู่ระบบเพื่อเขียนบันทึกส่วนตัวและคุยกับ AI companion'
+    }
+  ]
+})
+
 const { user, signInWithEmail, signInWithGoogle, loading, error } = useAuth()
 
 const email = ref('')

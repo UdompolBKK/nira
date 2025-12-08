@@ -191,9 +191,49 @@ onMounted(async () => {
   post.value = await getPost(postId)
 
   if (post.value) {
-    // Set page title
+    // Set page title and meta tags
+    const excerpt = post.value.content?.replace(/<[^>]*>/g, '').substring(0, 160) || 'บันทึก'
+
     useHead({
-      title: `${post.value.excerpt?.substring(0, 50) || 'บันทึก'}... - Nira`
+      title: `${post.value.excerpt?.substring(0, 50) || 'บันทึก'}... - บันทึกนิรนาม.com`,
+      meta: [
+        {
+          name: 'description',
+          content: excerpt
+        },
+        {
+          property: 'og:title',
+          content: `บันทึกจาก ${post.value.authorName || 'ผู้ใช้นิรนาม'}`
+        },
+        {
+          property: 'og:description',
+          content: excerpt
+        },
+        {
+          property: 'og:image',
+          content: post.value.authorPhoto || 'https://banthukniranan.com/og-default.jpg'
+        },
+        {
+          property: 'og:type',
+          content: 'article'
+        },
+        {
+          name: 'twitter:card',
+          content: 'summary'
+        },
+        {
+          name: 'twitter:title',
+          content: `บันทึกจาก ${post.value.authorName || 'ผู้ใช้นิรนาม'}`
+        },
+        {
+          name: 'twitter:description',
+          content: excerpt
+        },
+        {
+          name: 'twitter:image',
+          content: post.value.authorPhoto || 'https://banthukniranan.com/og-default.jpg'
+        }
+      ]
     })
 
     // Increment view

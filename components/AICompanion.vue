@@ -1,9 +1,9 @@
 <template>
   <div class="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
-    <!-- Speech Bubble - Always show when there's a message -->
+    <!-- Speech Bubble - Always show when there's a message and bot is enabled -->
     <Transition name="bubble">
       <div
-        v-if="showBubble && currentResponse"
+        v-if="showBubble && currentResponse && isBotEnabled && !showSkinSelector"
         class="relative max-w-[220px] px-4 py-3 bg-white rounded-2xl shadow-lg border border-gray-100"
       >
         <!-- Bubble tail -->
@@ -17,35 +17,38 @@
     </Transition>
 
     <!-- Character Container - Always visible -->
-    <div
-      class="relative group"
-      :class="{ 'animate-bounce-gentle': isIdle }"
-    >
-      <!-- Settings Button (Gear Icon) -->
-      <button
-        @click="showSkinSelector = true"
-        class="absolute -top-1 -left-1 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-gray-50"
-        title="เลือก AI Skin"
-      >
-        <Icon name="lucide:settings" class="w-3.5 h-3.5 text-gray-500" />
-      </button>
-
-      <!-- Listening indicator (typing) -->
-      <Transition name="fade">
-        <div
-          v-if="isTyping"
-          class="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full animate-pulse z-10"
-        />
-      </Transition>
-
-      <!-- Character Avatar -->
+    <div class="relative group">
+      <!-- Bot Avatar Wrapper - Moves up on hover -->
       <div
-        @click="showSkinSelector = true"
-        class="w-20 h-20 flex items-center justify-center cursor-pointer transition-all"
-        :class="{
-          'drop-shadow-lg': selectedBot?.avatar
-        }"
+        class="transition-all duration-300 group-hover:-translate-y-10"
+        :class="{ 'animate-bounce-gentle': isIdle }"
       >
+        <!-- Settings Button (Gear Icon) - Always visible -->
+        <button
+          @click="showSkinSelector = true"
+          class="absolute -top-1 -left-1 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center transition-all z-20 hover:bg-gray-50 hover:scale-110"
+          title="เลือก AI Skin"
+        >
+          <Icon name="lucide:settings" class="w-3.5 h-3.5 text-gray-500" />
+        </button>
+
+        <!-- Listening indicator (typing) -->
+        <Transition name="fade">
+          <div
+            v-if="isTyping"
+            class="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full animate-pulse z-10"
+          />
+        </Transition>
+
+        <!-- Character Avatar -->
+        <div
+          @click="showSkinSelector = true"
+          class="w-20 h-20 flex items-center justify-center cursor-pointer transition-all"
+          :class="{
+            'drop-shadow-lg': selectedBot?.avatar,
+            'grayscale opacity-40': !isBotEnabled
+          }"
+        >
         <!-- Bot Avatar Image (if selected bot has avatar) - transparent PNG support -->
         <img
           v-if="selectedBot?.avatar"
@@ -81,6 +84,31 @@
             <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-6 h-2 bg-purple-400 rounded-full" />
           </div>
         </div>
+      </div>
+      </div>
+
+      <!-- Enable/Disable Bot Toggle - Show at bottom on hover -->
+      <div
+        class="absolute bottom-0 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10"
+      >
+        <button
+          @click="toggleBot"
+          class="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full shadow-lg hover:shadow-xl transition-all border border-gray-200"
+          :title="isBotEnabled ? 'ปิดบอท' : 'เปิดบอท'"
+        >
+          <div class="relative w-9 h-5 rounded-full transition-colors"
+            :class="isBotEnabled ? 'bg-green-500' : 'bg-gray-300'"
+          >
+            <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"
+              :class="isBotEnabled ? 'translate-x-4' : 'translate-x-0'"
+            />
+          </div>
+          <span class="text-sm font-medium"
+            :class="isBotEnabled ? 'text-green-600' : 'text-gray-400'"
+          >
+            {{ isBotEnabled ? 'ON' : 'OFF' }}
+          </span>
+        </button>
       </div>
     </div>
 
@@ -199,6 +227,32 @@ const loadingBots = ref(false)
 const botList = ref<BotInfo[]>([])
 const selectedBot = ref<BotInfo | null>(null)
 
+// Bot enabled/disabled state
+const isBotEnabled = ref(true)
+
+// Toggle bot on/off
+const toggleBot = () => {
+  isBotEnabled.value = !isBotEnabled.value
+
+  // Save to localStorage
+  if (import.meta.client) {
+    localStorage.setItem('botEnabled', isBotEnabled.value ? '1' : '0')
+  }
+
+  // Hide bubble when disabled
+  if (!isBotEnabled.value && showBubble.value) {
+    showBubble.value = false
+  }
+}
+
+// Load bot enabled state from localStorage
+const loadBotEnabledState = () => {
+  if (import.meta.client) {
+    const saved = localStorage.getItem('botEnabled')
+    isBotEnabled.value = saved !== '0' // Default to enabled
+  }
+}
+
 // Load bot list from API
 const loadBotList = async () => {
   loadingBots.value = true
@@ -293,6 +347,11 @@ watch(showSkinSelector, async (isOpen) => {
 
 // Watch editor content and analyze automatically
 watch(() => props.editorContent, (newContent, oldContent) => {
+  // Don't analyze if bot is disabled
+  if (!isBotEnabled.value) {
+    return
+  }
+
   console.log('[AICompanion] Content changed:', newContent?.substring(0, 30), 'isListening:', isListening.value)
   // Always try to analyze - the analyzeText function will check isListening internally
   if (newContent !== oldContent) {
@@ -325,6 +384,9 @@ const mouthClass = computed(() => {
 let idleTimer: NodeJS.Timeout | null = null
 
 onMounted(async () => {
+  // Load bot enabled state from localStorage
+  loadBotEnabledState()
+
   // Start listening automatically
   startListening()
 

@@ -86,6 +86,20 @@ definePageMeta({
 })
 
 useHead({
-  title: 'ราคา - บันทึกนิรนาม'
+  title: 'ราคา - บันทึกนิรนาม',
+  meta: [
+    {
+      name: 'description',
+      content: 'เลือกแผนการใช้งานที่เหมาะกับคุณ - แผนฟรีหรือ Premium 79฿/เดือน พร้อม AI Companion, บันทึกไม่จำกัด และฟีเจอร์พิเศษมากมาย'
+    },
+    {
+      property: 'og:title',
+      content: 'ราคา - บันทึกนิรนาม'
+    },
+    {
+      property: 'og:description',
+      content: 'เลือกแผนการใช้งานที่เหมาะกับคุณ - แผนฟรีหรือ Premium 79฿/เดือน'
+    }
+  ]
 })
 </script>

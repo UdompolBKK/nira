@@ -56,14 +56,20 @@ export const useBotConfig = () => {
 
     try {
       const token = await getAuthToken()
+      console.log('[useBotConfig] Token:', token ? 'EXISTS' : 'NULL')
+
       if (!token) {
         error.value = 'กรุณาเข้าสู่ระบบ'
+        console.error('[useBotConfig] No auth token')
         return []
       }
 
+      console.log('[useBotConfig] Fetching /api/admin/bots...')
       const response = await $fetch<{ bots: BotConfig[] }>('/api/admin/bots', {
         headers: { Authorization: `Bearer ${token}` }
       })
+
+      console.log('[useBotConfig] Response:', response)
 
       bots.value = response.bots.map(bot => ({
         ...bot,
@@ -71,8 +77,10 @@ export const useBotConfig = () => {
         updatedAt: new Date(bot.updatedAt)
       }))
 
+      console.log('[useBotConfig] Bots loaded:', bots.value.length)
       return bots.value
     } catch (err: any) {
+      console.error('[useBotConfig] Error:', err)
       error.value = err.data?.message || err.message || 'เกิดข้อผิดพลาด'
       return []
     } finally {

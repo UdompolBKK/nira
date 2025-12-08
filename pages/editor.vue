@@ -6,8 +6,8 @@
     <main class="max-w-2xl mx-auto px-4 py-6">
       <!-- Timeline container -->
       <div class="relative">
-        <!-- Timeline line -->
-        <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200" />
+        <!-- Timeline line - thin and subtle -->
+        <div class="absolute left-[11px] top-0 bottom-0 w-px bg-gray-200" />
 
         <!-- User's previous posts (sorted oldest to newest) -->
         <TransitionGroup name="post" tag="div">
@@ -15,22 +15,22 @@
             <!-- Insert button before post (except first) -->
             <div
               v-if="index > 0"
-              class="relative pl-12 py-2 group"
+              class="relative pl-10 py-1 group"
             >
               <button
                 @click="openInsertEditor(index)"
-                class="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition-colors opacity-0 group-hover:opacity-100"
+                class="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors opacity-0 group-hover:opacity-100"
               >
-                <Icon name="lucide:plus-circle" class="w-4 h-4" />
-                <span>แทรกเรื่องราว</span>
+                <Icon name="lucide:plus" class="w-3.5 h-3.5" />
+                <span>แทรก</span>
               </button>
             </div>
 
-            <div class="relative pl-12 pb-8">
-              <!-- Timeline dot -->
+            <div class="relative pl-10 pb-3">
+              <!-- Timeline dot - smaller for cleaner look -->
               <div
-                class="absolute left-2.5 w-3 h-3 rounded-full bg-gray-400 ring-4 ring-white transition-all duration-500"
-                :class="{ 'bg-gray-900 scale-125': index === posts.length - 1 && justPosted }"
+                class="absolute left-2 w-2 h-2 rounded-full bg-gray-300 ring-2 ring-white transition-all duration-500"
+                :class="{ 'bg-gray-700 scale-125': index === posts.length - 1 && justPosted }"
               />
 
               <!-- Inline editor for this post (when editing) -->
@@ -86,40 +86,42 @@
               <!-- Post card (hidden when editing this post) -->
               <div
                 v-else
-                class="bg-white border border-gray-200 rounded-2xl p-4 transition-all duration-500"
-                :class="{ 'ring-2 ring-gray-900 ring-opacity-20 shadow-lg': index === posts.length - 1 && justPosted }"
+                class="group/post transition-all duration-500"
+                :class="{ 'bg-gray-50 rounded-xl px-3 py-2 -mx-3': index === posts.length - 1 && justPosted }"
               >
-                <!-- Header -->
-                <div class="flex items-center justify-between mb-3">
+                <!-- Content - flows naturally like autobiography text -->
+                <div
+                  class="text-gray-800 leading-relaxed prose prose-sm max-w-none"
+                  v-html="post.content"
+                />
+
+                <!-- Actions & Date - show on hover (desktop) or always show for owner (mobile) -->
+                <div
+                  class="flex items-center gap-3 mt-2 transition-opacity duration-200"
+                  :class="[
+                    'md:opacity-0 md:group-hover/post:opacity-100',
+                    isMobile ? 'opacity-100' : ''
+                  ]"
+                >
+                  <!-- Date (hidden until hover) -->
                   <span class="text-xs text-gray-400">
                     {{ formatDate(post.createdAt) }}
                   </span>
                   <span
-                    class="px-2.5 py-1 rounded-full text-xs"
-                    :class="MOOD_CATEGORIES[post.moodCategory]?.color || 'bg-gray-100'"
+                    class="text-xs opacity-70"
+                    :title="MOOD_CATEGORIES[post.moodCategory]?.label"
                   >
                     {{ MOOD_CATEGORIES[post.moodCategory]?.emoji }}
-                    {{ MOOD_CATEGORIES[post.moodCategory]?.label }}
                   </span>
-                </div>
-
-                <!-- Content -->
-                <div
-                  class="text-gray-900 leading-relaxed prose prose-sm max-w-none"
-                  v-html="post.content"
-                />
-
-                <!-- Actions -->
-                <div class="flex items-center gap-4 mt-4 pt-3 border-t border-gray-100">
                   <NuxtLink
                     :to="`/posts/${post.id}`"
-                    class="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 transition-colors text-sm"
+                    class="flex items-center gap-1 text-gray-400 hover:text-gray-600 transition-colors text-xs"
                   >
-                    <Icon name="lucide:message-circle" class="w-4 h-4" />
+                    <Icon name="lucide:message-circle" class="w-3.5 h-3.5" />
                     <span>{{ post.commentCount || 0 }}</span>
                   </NuxtLink>
-                  <span class="flex items-center gap-1.5 text-gray-400 text-sm">
-                    <Icon name="lucide:heart" class="w-4 h-4" />
+                  <span class="flex items-center gap-1 text-gray-400 text-xs">
+                    <Icon name="lucide:heart" class="w-3.5 h-3.5" />
                     <span>{{ post.likeCount || 0 }}</span>
                   </span>
                   <div class="flex-1" />
@@ -128,14 +130,14 @@
                     class="text-gray-400 hover:text-gray-600 transition-colors"
                     title="แก้ไข"
                   >
-                    <Icon name="lucide:pencil" class="w-4 h-4" />
+                    <Icon name="lucide:pencil" class="w-3.5 h-3.5" />
                   </button>
                   <button
                     @click="handleDelete(post.id)"
                     class="text-gray-400 hover:text-red-500 transition-colors"
                     title="ลบ"
                   >
-                    <Icon name="lucide:trash-2" class="w-4 h-4" />
+                    <Icon name="lucide:trash-2" class="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -210,11 +212,11 @@
         </Transition>
 
         <!-- Editor section -->
-        <div class="relative pl-12 pb-8">
+        <div class="relative pl-10 pb-8">
           <!-- Timeline dot for editor -->
           <div
-            class="absolute left-2.5 w-3 h-3 rounded-full transition-all duration-300"
-            :class="isEditing ? 'bg-gray-900 scale-125' : 'bg-gray-300'"
+            class="absolute left-2 w-2 h-2 rounded-full transition-all duration-300"
+            :class="isEditing ? 'bg-gray-700 scale-150' : 'bg-gray-300'"
           />
 
           <!-- Editor card -->
@@ -315,24 +317,9 @@
           </div>
         </div>
 
-        <!-- Load more -->
-        <div v-if="hasMore && posts.length > 0" class="relative pl-12 py-4">
-          <button
-            v-if="!loadingMore"
-            @click="loadMore"
-            class="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            โหลดเพิ่มเติม...
-          </button>
-          <Icon
-            v-else
-            name="lucide:loader-2"
-            class="w-5 h-5 animate-spin text-gray-400"
-          />
-        </div>
 
         <!-- Empty state -->
-        <div v-if="!loading && posts.length === 0 && !isEditing" class="relative pl-12 py-8">
+        <div v-if="!loading && posts.length === 0 && !isEditing" class="relative pl-10 py-8">
           <div class="text-center text-gray-400">
             <Icon name="lucide:book-open" class="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p class="text-sm">เริ่มเขียนบันทึกแรกของคุณ</p>
@@ -377,6 +364,14 @@ const isEditing = ref(false)
 const editorRef = ref<HTMLElement | null>(null)
 const justPosted = ref(false)
 const loadingMore = ref(false)
+
+// Mobile detection
+const isMobile = ref(false)
+const checkMobile = () => {
+  if (import.meta.client) {
+    isMobile.value = window.innerWidth < 768
+  }
+}
 
 // Edit state
 const editingPostId = ref<string | null>(null)
@@ -594,9 +589,17 @@ const formatDate = (date: Date) => {
 
 // Load user's posts on mount
 onMounted(async () => {
+  // Check mobile on mount and resize
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+
   if (user.value) {
     await getUserPosts(user.value.uid, 10)
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
 })
 </script>
 

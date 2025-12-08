@@ -133,6 +133,12 @@ ${memoriesContext}
         cleanedResponse = cleanedResponse.replace(/^```\n?/, '').replace(/\n?```$/, '')
       }
 
+      // Try to find JSON object in the response
+      const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        cleanedResponse = jsonMatch[0]
+      }
+
       const parsed = JSON.parse(cleanedResponse)
       responseText = parsed.response || aiResponse
 
@@ -151,8 +157,14 @@ ${memoriesContext}
         console.log('[TrainChat] Memory saved:', parsed.memory)
       }
     } catch {
-      // If not JSON, just use as plain text
-      responseText = aiResponse
+      // If JSON parse failed, try to extract response field with regex
+      const responseMatch = aiResponse.match(/"response"\s*:\s*"([^"]+)"/)
+      if (responseMatch) {
+        responseText = responseMatch[1]
+      } else {
+        // Just use as plain text, but remove any JSON-like patterns
+        responseText = aiResponse.replace(/\{[^}]*\}/g, '').trim() || aiResponse
+      }
     }
 
     return {

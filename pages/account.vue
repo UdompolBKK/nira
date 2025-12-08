@@ -114,7 +114,7 @@
                 type="text"
                 class="flex-1 rounded-r-xl border border-gray-200 px-4 py-3 text-gray-900 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                 placeholder="username"
-                @input="onSlugInput"
+                @input="onSlugInput($event)"
               />
             </div>
             <p v-if="slugError" class="text-xs text-red-500 mt-1">{{ slugError }}</p>
@@ -238,45 +238,73 @@ const canSave = computed(() => {
 // Firebase
 const { firestore, storage } = useFirebase()
 
-// Load profile when user is available
-watch(() => user.value?.uid, async (uid) => {
-  if (!uid) {
+// Load profile using API
+const loadProfile = async () => {
+  if (!user.value?.uid) {
     loading.value = false
     return
   }
 
   loading.value = true
   try {
-    const { doc, getDoc, onSnapshot } = await import('firebase/firestore')
-    const docRef = doc(firestore, 'users', uid)
+    const firebaseUser = user.value._firebaseUser
+    if (!firebaseUser) {
+      throw new Error('Not authenticated')
+    }
+    const token = await firebaseUser.getIdToken()
 
-    // Use onSnapshot for realtime updates
-    onSnapshot(docRef, (snap) => {
-      if (snap.exists()) {
-        profile.value = snap.data() as any
-        // Only set form values if they haven't been edited
-        if (!displayName.value && profile.value?.displayName) {
-          displayName.value = profile.value.displayName
-        }
-        if (!slug.value && profile.value?.slug) {
-          slug.value = profile.value.slug
-          slugAvailable.value = true // Current slug is valid
-        }
+    const response = await $fetch<{ profile: any; exists: boolean }>('/api/user/profile', {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`
       }
-      loading.value = false
-    }, (err) => {
-      console.error('Error loading profile:', err)
-      error.value = 'ไม่สามารถโหลดข้อมูลได้'
-      loading.value = false
     })
-  } catch (err) {
-    console.error('Error:', err)
+
+    if (response.exists && response.profile) {
+      profile.value = response.profile
+      // Only set form values if they haven't been edited
+      if (!displayName.value && response.profile.displayName) {
+        displayName.value = response.profile.displayName
+      }
+      if (!slug.value && response.profile.slug) {
+        slug.value = response.profile.slug
+        slugAvailable.value = true // Current slug is valid
+      }
+    }
+  } catch (err: any) {
+    console.error('Error loading profile:', err)
+    error.value = err.data?.message || 'ไม่สามารถโหลดข้อมูลได้'
+  } finally {
+    loading.value = false
+  }
+}
+
+// Load profile when user is available
+watch(() => user.value?.uid, async (uid) => {
+  if (uid) {
+    await loadProfile()
+  } else {
     loading.value = false
   }
 }, { immediate: true })
 
 // Slug input handler with debounce
-const onSlugInput = () => {
+const onSlugInput = (e?: Event) => {
+  // Force lowercase, remove spaces and special chars in real-time
+  const input = e?.target as HTMLInputElement
+  if (input) {
+    const cleaned = input.value
+      .toLowerCase()
+      .replace(/\s+/g, '') // Remove all spaces
+      .replace(/[^a-z0-9_]/g, '') // Keep only lowercase letters, numbers, underscore
+
+    if (input.value !== cleaned) {
+      slug.value = cleaned
+      input.value = cleaned
+      return
+    }
+  }
+
   slugError.value = null
   slugAvailable.value = false
 
@@ -289,12 +317,18 @@ const onSlugInput = () => {
 
   // Basic validation
   if (sanitized.length < 3) {
-    slugError.value = 'ต้องมีอย่างน้อย 3 ตัวอักษร'
+    slugError.value = 'ต้องมีอย่างน้อย 3 ตัวอักษร (a-z, 0-9, _)'
     return
   }
 
   if (sanitized.length > 20) {
     slugError.value = 'ต้องไม่เกิน 20 ตัวอักษร'
+    return
+  }
+
+  // Check for invalid characters
+  if (!/^[a-z0-9_]+$/.test(sanitized)) {
+    slugError.value = 'ใช้ได้เฉพาะตัวเล็ก (a-z), ตัวเลข (0-9), และขีดล่าง (_)'
     return
   }
 
@@ -359,8 +393,6 @@ const save = async () => {
 
   try {
     saving.value = true
-    const { doc, setDoc } = await import('firebase/firestore')
-    const docRef = doc(firestore, 'users', user.value.uid)
 
     let photoURL = profile.value?.photoURL
 
@@ -373,16 +405,31 @@ const save = async () => {
       photoURL = await getDownloadURL(sRef)
     }
 
-    // Save profile
-    await setDoc(docRef, {
-      displayName: displayName.value.trim(),
-      slug: sanitized,
-      ...(photoURL && { photoURL }),
-      updatedAt: new Date()
-    }, { merge: true })
+    // Get auth token
+    const firebaseUser = user.value._firebaseUser
+    if (!firebaseUser) {
+      throw new Error('Not authenticated')
+    }
+    const token = await firebaseUser.getIdToken()
+
+    // Call API to save profile
+    await $fetch('/api/user/profile', {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: {
+        displayName: displayName.value.trim(),
+        slug: sanitized,
+        photoURL
+      }
+    })
 
     message.value = 'บันทึกเรียบร้อย!'
     file.value = null
+
+    // Reload profile to update display
+    await loadProfile()
 
     // If this was a required setup, redirect to editor
     if (isSetupRequired.value) {
@@ -397,7 +444,7 @@ const save = async () => {
     }
   } catch (err: any) {
     console.error('Save error:', err)
-    error.value = err.message || 'เกิดข้อผิดพลาดในการบันทึก'
+    error.value = err.data?.message || err.message || 'เกิดข้อผิดพลาดในการบันทึก'
   } finally {
     saving.value = false
   }

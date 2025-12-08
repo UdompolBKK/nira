@@ -1,8 +1,31 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  ssr: false,
+  ssr: true,
   nitro: {
     preset: 'vercel'
+  },
+
+  routeRules: {
+    // หน้าสาธารณะที่ต้องการ SSR เพื่อ SEO
+    '/': { ssr: true },
+    '/browse': { ssr: true },
+    '/browse/**': { ssr: true },
+    '/articles': { ssr: true },
+    '/articles/**': { ssr: true },
+    '/about': { ssr: true },
+    '/pricing': { ssr: true },
+    '/profile/**': { ssr: true },
+    '/posts/**': { ssr: true },
+    '/login': { ssr: true },
+    '/signup': { ssr: true },
+
+    // หน้าที่ต้องการ SPA (มี auth และ real-time features)
+    '/editor': { ssr: false },
+    '/account': { ssr: false },
+    '/admin/**': { ssr: false },
+    '/my-activity': { ssr: false },
+    '/my-problem/**': { ssr: false },
+    '/chat': { ssr: false }
   },
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
@@ -46,7 +69,7 @@ export default defineNuxtConfig({
         { rel: 'canonical', href: 'https://anonymous-diary.app' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'anonymous' },
-        { href: 'https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap', rel: 'stylesheet' }
+        { href: 'https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap', rel: 'stylesheet' }
       ]
     }
   },

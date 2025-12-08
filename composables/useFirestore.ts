@@ -60,6 +60,7 @@ export const useFirestore = () => {
   }
 
   return {
+    firestore,
     getDocument,
     getCollection,
     addDocument,

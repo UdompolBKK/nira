@@ -1,0 +1,26 @@
+# robots.txt สำหรับ บันทึกนิรนาม.com
+
+User-agent: *
+Allow: /
+Allow: /browse
+Allow: /articles
+Allow: /about
+Allow: /pricing
+Allow: /profile/
+Allow: /posts/
+
+# ป้องกันหน้า private และ admin
+Disallow: /admin/
+Disallow: /account
+Disallow: /editor
+Disallow: /my-activity
+Disallow: /my-problem/
+Disallow: /chat
+Disallow: /login
+Disallow: /signup
+
+# Sitemap (เพิ่มทีหลังเมื่อสร้าง sitemap)
+# Sitemap: https://banthukniranan.com/sitemap.xml
+
+# Crawl-delay for polite bots
+Crawl-delay: 1
