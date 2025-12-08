@@ -30,7 +30,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
 
-  modules: ['@nuxt/icon'],
+  modules: ['@nuxt/icon', 'nuxt-splide'],
 
   app: {
     pageTransition: { name: 'page', mode: 'out-in' },
@@ -92,11 +92,6 @@ export default defineNuxtConfig({
         scss: {
           additionalData: '@import "~/assets/scss/_variables.scss"; @import "~/assets/scss/_mixins.scss";'
         }
-      }
-    },
-    build: {
-      rollupOptions: {
-        external: ['@splidejs/vue-splide', '@splidejs/splide']
       }
     }
   },
