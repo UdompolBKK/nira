@@ -70,42 +70,72 @@
             <!-- Timeline dot -->
             <div class="absolute left-1 top-2 w-2 h-2 rounded-full bg-gray-300 ring-2 ring-white" style="margin-left: -39px;" />
 
-            <!-- Post content - flows naturally like autobiography text -->
-            <div
-              class="text-gray-800 leading-relaxed prose prose-sm max-w-none"
-              v-html="post.content"
-            />
+            <!-- Locked Post -->
+            <div v-if="post.isLocked && !post.content" class="relative">
+              <!-- Lock Icon Badge -->
+              <div class="absolute -top-1 -left-1 z-10 bg-gray-900 text-white rounded-full p-2 shadow-lg">
+                <Icon name="lucide:lock" class="w-4 h-4" />
+              </div>
 
-            <!-- Actions - show on hover -->
-            <div
-              class="flex items-center gap-3 mt-2 transition-opacity duration-200 opacity-0 group-hover/post:opacity-100"
-            >
-              <!-- Mood emoji -->
-              <span
-                v-if="post.moodCategory"
-                class="text-xs opacity-70"
-                :title="getMoodLabel(post.moodCategory)"
+              <!-- Blurred Placeholder -->
+              <div class="bg-gray-100 rounded-lg p-6 border-2 border-gray-300 border-dashed">
+                <div class="space-y-3">
+                  <div class="h-3 bg-gray-300 rounded w-3/4 blur-sm"></div>
+                  <div class="h-3 bg-gray-300 rounded w-full blur-sm"></div>
+                  <div class="h-3 bg-gray-300 rounded w-5/6 blur-sm"></div>
+                  <div class="h-3 bg-gray-300 rounded w-2/3 blur-sm"></div>
+                </div>
+                <div class="text-center mt-6">
+                  <Icon name="lucide:lock" class="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p class="text-sm text-gray-500 font-medium">เนื้อหาถูกล็อค</p>
+                  <p class="text-xs text-gray-400 mt-1">เฉพาะเจ้าของเท่านั้นที่สามารถดูได้</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Normal Post -->
+            <div v-else>
+              <!-- Post content - flows naturally like autobiography text -->
+              <div
+                class="text-gray-800 leading-relaxed prose prose-sm max-w-none"
+                v-html="post.content"
+              />
+
+              <!-- Actions - show on hover -->
+              <div
+                class="flex items-center gap-3 mt-2 transition-opacity duration-200 opacity-0 group-hover/post:opacity-100"
               >
-                {{ getMoodEmoji(post.moodCategory) }}
-              </span>
-              <!-- Comments Button -->
-              <button
-                @click="openCommentsModal(post.id)"
-                class="flex items-center gap-1 text-gray-400 hover:text-gray-600 transition-colors text-xs"
-              >
-                <Icon name="lucide:message-circle" class="w-3.5 h-3.5" />
-                <span>{{ post.commentsCount || 0 }}</span>
-              </button>
-              <!-- Likes -->
-              <span class="flex items-center gap-1 text-gray-400 text-xs">
-                <Icon name="lucide:heart" class="w-3.5 h-3.5" />
-                <span>{{ post.likesCount || 0 }}</span>
-              </span>
-              <!-- Views -->
-              <span class="flex items-center gap-1 text-gray-400 text-xs">
-                <Icon name="lucide:eye" class="w-3.5 h-3.5" />
-                <span>{{ post.viewCount || 0 }}</span>
-              </span>
+                <!-- Mood emoji -->
+                <span
+                  v-if="post.moodCategory"
+                  class="text-xs opacity-70"
+                  :title="getMoodLabel(post.moodCategory)"
+                >
+                  {{ getMoodEmoji(post.moodCategory) }}
+                </span>
+                <!-- Lock icon if locked but viewer is owner -->
+                <span v-if="post.isLocked" class="flex items-center gap-1 text-gray-400 text-xs" title="โพสต์นี้ถูกล็อค">
+                  <Icon name="lucide:lock" class="w-3.5 h-3.5" />
+                </span>
+                <!-- Comments Button -->
+                <button
+                  @click="openCommentsModal(post.id)"
+                  class="flex items-center gap-1 text-gray-400 hover:text-gray-600 transition-colors text-xs"
+                >
+                  <Icon name="lucide:message-circle" class="w-3.5 h-3.5" />
+                  <span>{{ post.commentsCount || 0 }}</span>
+                </button>
+                <!-- Likes -->
+                <span class="flex items-center gap-1 text-gray-400 text-xs">
+                  <Icon name="lucide:heart" class="w-3.5 h-3.5" />
+                  <span>{{ post.likesCount || 0 }}</span>
+                </span>
+                <!-- Views -->
+                <span class="flex items-center gap-1 text-gray-400 text-xs">
+                  <Icon name="lucide:eye" class="w-3.5 h-3.5" />
+                  <span>{{ post.viewCount || 0 }}</span>
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -194,7 +224,7 @@
 <script setup lang="ts">
 import { useFirestore } from '~/composables/useFirestore'
 import { useAuth } from '~/composables/useAuth'
-import { collection, query, where, orderBy, limit, getDocs, type Timestamp } from 'firebase/firestore'
+import { collection, query, where, limit, getDocs, type Timestamp } from 'firebase/firestore'
 import { MOOD_CATEGORIES } from '~/composables/usePosts'
 
 definePageMeta({
@@ -212,7 +242,7 @@ interface UserProfile {
 interface Post {
   id: string
   userId: string
-  content: string
+  content: string | null
   excerpt?: string
   moodCategory?: string
   likesCount?: number
@@ -220,6 +250,7 @@ interface Post {
   viewCount?: number
   createdAt: Timestamp | Date
   visibility: string
+  isLocked?: boolean
 }
 
 interface Comment {
@@ -390,21 +421,16 @@ const loadUserStories = async () => {
       title: `${userProfile.value.displayName} - เรื่องราวชีวิต | Nira`
     })
 
-    // Load user's public posts (sorted oldest to newest like editor)
-    const postsRef = collection(firestore, 'posts')
-    const postsQuery = query(
-      postsRef,
-      where('userId', '==', userId),
-      where('visibility', '==', 'public'),
-      orderBy('createdAt', 'asc'),
-      limit(50)
-    )
-    const postsSnapshot = await getDocs(postsQuery)
+    // Load posts via API (will handle locked posts)
+    const viewerId = user.value?.uid || ''
+    const response = await $fetch(`/api/stories/${userId}/posts`, {
+      query: { viewerId }
+    })
 
-    posts.value = postsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Post[]
+    posts.value = response.posts.map((post: any) => ({
+      ...post,
+      createdAt: new Date(post.createdAt)
+    }))
 
   } catch (error) {
     console.error('Error loading user stories:', error)
