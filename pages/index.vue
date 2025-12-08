@@ -187,7 +187,7 @@
 <script setup lang="ts">
 import { MOOD_CATEGORIES, type Post } from '~/composables/usePosts'
 import { Splide, SplideSlide } from '@splidejs/vue-splide'
-import '@splidejs/vue-splide/css'
+import '@splidejs/splide/css'
 
 definePageMeta({
   layout: 'default'

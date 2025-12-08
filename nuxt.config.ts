@@ -95,15 +95,15 @@ export default defineNuxtConfig({
       }
     },
     optimizeDeps: {
-      include: ['@splidejs/vue-splide']
+      include: ['@splidejs/vue-splide', '@splidejs/splide']
     },
     ssr: {
-      noExternal: ['@splidejs/vue-splide']
+      noExternal: ['@splidejs/vue-splide', '@splidejs/splide']
     }
   },
 
   build: {
-    transpile: ['@splidejs/vue-splide']
+    transpile: ['@splidejs/vue-splide', '@splidejs/splide']
   },
 
   runtimeConfig: {
