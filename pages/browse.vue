@@ -41,8 +41,8 @@
         </div>
 
         <!-- Vented stories slider with Splide (Client-side only) -->
-        <ClientOnly>
-          <div v-if="ventedStories.length > 0" class="vent-stories-slider">
+        <ClientOnly v-if="ventedStories.length > 0">
+          <div class="vent-stories-slider">
             <Splide :options="splideOptions" class="vent-splide">
               <SplideSlide v-for="story in ventedStories" :key="story.id">
                 <div style="padding-bottom: 20px;">
@@ -60,7 +60,7 @@
 
         <!-- Empty state -->
         <div
-          v-else
+          v-if="!loadingVents && ventedStories.length === 0"
           class="text-center py-12 text-gray-400 text-sm"
         >
           ยังไม่มีเรื่องราวที่ได้รับการระบาย
