@@ -71,29 +71,28 @@
             <div class="absolute left-1 top-2 w-2 h-2 rounded-full bg-gray-300 ring-2 ring-white" style="margin-left: -39px;" />
 
             <!-- Locked Post -->
-            <div v-if="post.isLocked && !post.content" class="relative">
+            <div v-if="post.isLocked" class="relative">
               <!-- Lock Icon Badge -->
               <div class="absolute -top-1 -left-1 z-10 bg-gray-900 text-white rounded-full p-2 shadow-lg">
                 <Icon name="lucide:lock" class="w-4 h-4" />
               </div>
 
-              <!-- Blurred Placeholder -->
-              <div class="bg-gray-100 rounded-lg p-6 border-2 border-gray-300 border-dashed">
-                <div class="space-y-3">
-                  <div class="h-3 bg-gray-300 rounded w-3/4 blur-sm"></div>
-                  <div class="h-3 bg-gray-300 rounded w-full blur-sm"></div>
-                  <div class="h-3 bg-gray-300 rounded w-5/6 blur-sm"></div>
-                  <div class="h-3 bg-gray-300 rounded w-2/3 blur-sm"></div>
+              <!-- Fake blurred text that looks realistic -->
+              <div class="relative">
+                <div class="text-gray-800 leading-relaxed prose prose-sm max-w-none blur-md select-none pointer-events-none opacity-60">
+                  {{ generateFakeText(post.contentLength || 500) }}
                 </div>
-                <div class="text-center mt-6">
-                  <Icon name="lucide:lock" class="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p class="text-sm text-gray-500 font-medium">เนื้อหาถูกล็อค</p>
-                  <p class="text-xs text-gray-400 mt-1">เฉพาะเจ้าของเท่านั้นที่สามารถดูได้</p>
+                <div class="absolute inset-0 flex items-center justify-center bg-white/70">
+                  <div class="text-center p-6 bg-white/90 rounded-lg shadow-lg border-2 border-gray-300">
+                    <Icon name="lucide:lock" class="w-10 h-10 text-gray-600 mx-auto mb-2" />
+                    <p class="text-sm text-gray-700 font-semibold">เนื้อหาถูกล็อค</p>
+                    <p class="text-xs text-gray-500 mt-1">ไม่สามารถดูได้ในหน้านี้</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Normal Post -->
+            <!-- Normal Post (not locked) -->
             <div v-else>
               <!-- Post content - flows naturally like autobiography text -->
               <div
@@ -112,10 +111,6 @@
                   :title="getMoodLabel(post.moodCategory)"
                 >
                   {{ getMoodEmoji(post.moodCategory) }}
-                </span>
-                <!-- Lock icon if locked but viewer is owner -->
-                <span v-if="post.isLocked" class="flex items-center gap-1 text-gray-400 text-xs" title="โพสต์นี้ถูกล็อค">
-                  <Icon name="lucide:lock" class="w-3.5 h-3.5" />
                 </span>
                 <!-- Comments Button -->
                 <button
@@ -243,6 +238,7 @@ interface Post {
   id: string
   userId: string
   content: string | null
+  contentLength?: number
   excerpt?: string
   moodCategory?: string
   likesCount?: number
@@ -315,6 +311,23 @@ const getMoodEmoji = (mood?: string) => {
 
 const getMoodLabel = (mood?: string) => {
   return MOOD_CATEGORIES[mood || 'normal']?.label || 'ปกติ'
+}
+
+// Generate fake blurred text based on content length
+const generateFakeText = (length: number) => {
+  const thaiChars = 'กขคงจฉชซญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ กขคงจฉชซญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ   '
+  let result = ''
+  const wordLengths = [3, 4, 5, 6, 7, 8, 10, 12] // Variable word lengths
+
+  while (result.length < length) {
+    const wordLength = wordLengths[Math.floor(Math.random() * wordLengths.length)]
+    for (let i = 0; i < wordLength && result.length < length; i++) {
+      result += thaiChars[Math.floor(Math.random() * thaiChars.length)]
+    }
+    if (result.length < length) result += ' '
+  }
+
+  return result.substring(0, length)
 }
 
 // Open comments modal

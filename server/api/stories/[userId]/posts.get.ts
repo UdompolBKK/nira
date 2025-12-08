@@ -25,13 +25,18 @@ export default defineEventHandler(async (event) => {
     const posts = postsSnapshot.docs.map(doc => {
       const data = doc.data()
       const isLocked = data.isLocked === true
-      const isOwner = viewerId === userId
+
+      // Calculate content length (strip HTML tags)
+      const contentLength = isLocked && data.content
+        ? data.content.replace(/<[^>]*>/g, '').length
+        : 0
 
       return {
         id: doc.id,
         userId: data.userId,
-        // If locked and viewer is not owner, don't send content
-        content: (isLocked && !isOwner) ? null : data.content,
+        // If locked, NEVER send content (even to owner in stories view - it's read-only anyway)
+        content: isLocked ? null : data.content,
+        contentLength: isLocked ? contentLength : 0, // Send length for generating fake text
         excerpt: data.excerpt,
         moodCategory: data.moodCategory,
         likesCount: data.likesCount || 0,

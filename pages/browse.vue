@@ -40,16 +40,23 @@
           </div>
         </div>
 
-        <!-- Vented stories slider with Splide -->
-        <div v-else-if="ventedStories.length > 0" class="vent-stories-slider">
-          <Splide :options="splideOptions" class="vent-splide">
-            <SplideSlide v-for="story in ventedStories" :key="story.id">
-              <div style="padding-bottom: 20px;">
-                <VentCard :post="story" variant="compact" />
-              </div>
-            </SplideSlide>
-          </Splide>
-        </div>
+        <!-- Vented stories slider with Splide (Client-side only) -->
+        <ClientOnly>
+          <div v-if="ventedStories.length > 0" class="vent-stories-slider">
+            <Splide :options="splideOptions" class="vent-splide">
+              <SplideSlide v-for="story in ventedStories" :key="story.id">
+                <div style="padding-bottom: 20px;">
+                  <VentCard :post="story" variant="compact" />
+                </div>
+              </SplideSlide>
+            </Splide>
+          </div>
+          <template #fallback>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <VentCard v-for="story in ventedStories.slice(0, 3)" :key="story.id" :post="story" variant="compact" />
+            </div>
+          </template>
+        </ClientOnly>
 
         <!-- Empty state -->
         <div
@@ -156,7 +163,7 @@
 import { useFirestore } from '~/composables/useFirestore'
 import { collection, query, where, orderBy, limit, getDocs, type Timestamp } from 'firebase/firestore'
 import { Splide, SplideSlide } from '@splidejs/vue-splide'
-import '@splidejs/vue-splide/css'
+import '@splidejs/splide/css'
 
 definePageMeta({
   layout: 'default',
