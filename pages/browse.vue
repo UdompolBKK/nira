@@ -162,8 +162,6 @@
 <script setup lang="ts">
 import { useFirestore } from '~/composables/useFirestore'
 import { collection, query, where, orderBy, limit, getDocs, type Timestamp } from 'firebase/firestore'
-import { Splide, SplideSlide } from '@splidejs/vue-splide'
-import '@splidejs/splide/css'
 
 definePageMeta({
   layout: 'default',
