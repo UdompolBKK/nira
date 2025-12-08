@@ -142,8 +142,9 @@
             :key="post.id"
             class="masonry-item"
           >
-            <VentPostCard
+            <VentCard
               :post="post"
+              variant="full"
               @like="toggleLike"
               @toggle-comments="toggleComments"
               @add-comment="addComment"
