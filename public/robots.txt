@@ -19,8 +19,8 @@ Disallow: /chat
 Disallow: /login
 Disallow: /signup
 
-# Sitemap (เพิ่มทีหลังเมื่อสร้าง sitemap)
-# Sitemap: https://banthukniranan.com/sitemap.xml
+# Sitemap
+Sitemap: https://บันทึกนิรนาม.com/sitemap.xml
 
 # Crawl-delay for polite bots
 Crawl-delay: 1

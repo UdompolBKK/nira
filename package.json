@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@nuxt/devtools": "latest",
+    "@nuxtjs/sitemap": "^7.4.9",
     "@types/nodemailer": "^7.0.4",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
