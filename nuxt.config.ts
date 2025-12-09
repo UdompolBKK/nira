@@ -70,6 +70,21 @@ export default defineNuxtConfig({
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'anonymous' },
         { href: 'https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap', rel: 'stylesheet' }
+      ],
+      script: [
+        // Google Analytics 4
+        {
+          src: 'https://www.googletagmanager.com/gtag/js?id=G-LMHQP2MFBW',
+          async: true
+        },
+        {
+          children: `
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-LMHQP2MFBW');
+          `
+        }
       ]
     }
   },
