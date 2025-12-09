@@ -274,7 +274,7 @@ const handleEmotion = async (type: EmotionType) => {
 // Handle edit
 const handleEdit = () => {
   showOptions.value = false
-  router.push(`/editor?edit=${postId}`)
+  router.push(`/my-story?edit=${postId}`)
 }
 
 // Handle delete

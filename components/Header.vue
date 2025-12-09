@@ -33,37 +33,67 @@
           <div class="hidden gap-8 md:flex items-center md:ml-8">
             <NuxtLink
               to="/"
-              class="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+              :class="[
+                'text-sm font-medium transition-colors',
+                isActive('/')
+                  ? 'text-gray-900 border-b-2 border-gray-900 pb-1'
+                  : 'text-gray-700 hover:text-gray-900'
+              ]"
             >
               หน้าหลัก
             </NuxtLink>
             <NuxtLink
               to="/my-activity"
-              class="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+              :class="[
+                'text-sm font-medium transition-colors',
+                isActive('/my-activity')
+                  ? 'text-gray-900 border-b-2 border-gray-900 pb-1'
+                  : 'text-gray-700 hover:text-gray-900'
+              ]"
             >
               บันทึกของฉัน
             </NuxtLink>
             <NuxtLink
               to="/stories"
-              class="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+              :class="[
+                'text-sm font-medium transition-colors',
+                isActive('/stories')
+                  ? 'text-gray-900 border-b-2 border-gray-900 pb-1'
+                  : 'text-gray-700 hover:text-gray-900'
+              ]"
             >
               เรื่องราวชีวิต
             </NuxtLink>
             <NuxtLink
               to="/problems"
-              class="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+              :class="[
+                'text-sm font-medium transition-colors',
+                isActive('/problems')
+                  ? 'text-gray-900 border-b-2 border-gray-900 pb-1'
+                  : 'text-gray-700 hover:text-gray-900'
+              ]"
             >
               ปัญหาที่ได้รับการระบาย
             </NuxtLink>
             <NuxtLink
               to="/articles"
-              class="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+              :class="[
+                'text-sm font-medium transition-colors',
+                isActive('/articles')
+                  ? 'text-gray-900 border-b-2 border-gray-900 pb-1'
+                  : 'text-gray-700 hover:text-gray-900'
+              ]"
             >
               บทความ
             </NuxtLink>
             <NuxtLink
               to="/about"
-              class="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+              :class="[
+                'text-sm font-medium transition-colors',
+                isActive('/about')
+                  ? 'text-gray-900 border-b-2 border-gray-900 pb-1'
+                  : 'text-gray-700 hover:text-gray-900'
+              ]"
             >
               เกี่ยวกับเรา
             </NuxtLink>
@@ -239,35 +269,60 @@
         <!-- Navigation Links -->
         <NuxtLink
           to="/"
-          class="block rounded-lg px-6 py-2 font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+          :class="[
+            'block rounded-lg px-6 py-2 font-medium transition-colors',
+            isActive('/') ? 'bg-gray-900 text-white' : 'text-gray-900 hover:bg-gray-50'
+          ]"
           @click="mobileMenuOpen = false"
         >
           หน้าหลัก
         </NuxtLink>
         <NuxtLink
           to="/my-activity"
-          class="block rounded-lg px-6 py-2 font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+          :class="[
+            'block rounded-lg px-6 py-2 font-medium transition-colors',
+            isActive('/my-activity') ? 'bg-gray-900 text-white' : 'text-gray-900 hover:bg-gray-50'
+          ]"
           @click="mobileMenuOpen = false"
         >
           บันทึกของฉัน
         </NuxtLink>
         <NuxtLink
-          to="/browse"
-          class="block rounded-lg px-6 py-2 font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+          to="/stories"
+          :class="[
+            'block rounded-lg px-6 py-2 font-medium transition-colors',
+            isActive('/stories') ? 'bg-gray-900 text-white' : 'text-gray-900 hover:bg-gray-50'
+          ]"
           @click="mobileMenuOpen = false"
         >
-          เรื่องราวของคนอื่น
+          เรื่องราวชีวิต
+        </NuxtLink>
+        <NuxtLink
+          to="/problems"
+          :class="[
+            'block rounded-lg px-6 py-2 font-medium transition-colors',
+            isActive('/problems') ? 'bg-gray-900 text-white' : 'text-gray-900 hover:bg-gray-50'
+          ]"
+          @click="mobileMenuOpen = false"
+        >
+          ปัญหาที่ได้รับการระบาย
         </NuxtLink>
         <NuxtLink
           to="/articles"
-          class="block rounded-lg px-6 py-2 font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+          :class="[
+            'block rounded-lg px-6 py-2 font-medium transition-colors',
+            isActive('/articles') ? 'bg-gray-900 text-white' : 'text-gray-900 hover:bg-gray-50'
+          ]"
           @click="mobileMenuOpen = false"
         >
           บทความ
         </NuxtLink>
         <NuxtLink
           to="/about"
-          class="block rounded-lg px-6 py-2 font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+          :class="[
+            'block rounded-lg px-6 py-2 font-medium transition-colors',
+            isActive('/about') ? 'bg-gray-900 text-white' : 'text-gray-900 hover:bg-gray-50'
+          ]"
           @click="mobileMenuOpen = false"
         >
           เกี่ยวกับเรา
@@ -300,6 +355,16 @@
 <script setup lang="ts">
 import { useAuth } from '~/composables/useAuth'
 import { useNotifications } from '~/composables/useNotifications'
+
+const route = useRoute()
+
+// Check if route is active (must be defined before using in template)
+const isActive = (path: string) => {
+  if (path === '/') {
+    return route.path === '/'
+  }
+  return route.path.startsWith(path)
+}
 
 const mobileMenuOpen = ref(false)
 const accountMenuOpen = ref(false)

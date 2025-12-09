@@ -20,7 +20,7 @@ export default defineNuxtConfig({
     '/signup': { ssr: true },
 
     // หน้าที่ต้องการ SPA (มี auth และ real-time features)
-    '/editor': { ssr: false },
+    '/my-story': { ssr: false },
     '/account': { ssr: false },
     '/admin/**': { ssr: false },
     '/my-activity': { ssr: false },

@@ -431,10 +431,10 @@ const save = async () => {
     // Reload profile to update display
     await loadProfile()
 
-    // If this was a required setup, redirect to editor
+    // If this was a required setup, redirect to my-story
     if (isSetupRequired.value) {
       setTimeout(() => {
-        router.push('/editor')
+        router.push('/my-story')
       }, 1000)
     } else {
       // Clear message after 3 seconds

@@ -12,7 +12,7 @@ Allow: /posts/
 # ป้องกันหน้า private และ admin
 Disallow: /admin/
 Disallow: /account
-Disallow: /editor
+Disallow: /my-story
 Disallow: /my-activity
 Disallow: /my-problem/
 Disallow: /chat

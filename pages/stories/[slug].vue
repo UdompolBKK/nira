@@ -218,8 +218,7 @@ import { collection, query, where, limit, getDocs, type Timestamp } from 'fireba
 import { MOOD_CATEGORIES } from '~/composables/usePosts'
 
 definePageMeta({
-  layout: 'default',
-  middleware: 'auth'
+  layout: 'default'
 })
 
 interface UserProfile {

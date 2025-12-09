@@ -151,7 +151,7 @@
 
     <!-- FAB - Write button -->
     <NuxtLink
-      to="/editor"
+      to="/my-story"
       class="fixed bottom-4 right-4 md:bottom-6 md:right-6 w-14 h-14 md:w-12 md:h-12 bg-gray-900 text-white rounded-full flex items-center justify-center hover:bg-gray-800 transition-colors z-50 shadow-lg active:scale-95"
     >
       <Icon name="lucide:plus" class="w-6 h-6 md:w-5 md:h-5" />

@@ -15,7 +15,7 @@
       <div class="grid md:grid-cols-3 gap-6 mb-12">
         <!-- Option 1: เรื่องราวชีวิตของฉัน -->
         <NuxtLink
-          to="/editor"
+          to="/my-story"
           class="group bg-white rounded-3xl p-8 shadow-md hover:shadow-2xl transition-all duration-300 border-2 border-transparent hover:border-purple-200 cursor-pointer"
         >
           <div class="mb-6 flex justify-center">
@@ -106,7 +106,8 @@
 
 <script setup lang="ts">
 definePageMeta({
-  layout: 'default'
+  layout: 'default',
+  middleware: 'auth'
 })
 
 useHead({

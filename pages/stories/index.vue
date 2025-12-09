@@ -110,8 +110,7 @@ import { useFirestore } from '~/composables/useFirestore'
 import { collection, query, where, orderBy, limit, getDocs, type Timestamp } from 'firebase/firestore'
 
 definePageMeta({
-  layout: 'default',
-  middleware: 'auth'
+  layout: 'default'
 })
 
 useHead({
