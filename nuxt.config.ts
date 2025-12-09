@@ -30,34 +30,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
 
-  modules: ['@nuxt/icon', 'nuxt-splide', '@nuxtjs/sitemap'],
-
-  sitemap: {
-    hostname: 'https://บันทึกนิรนาม.com',
-    gzip: true,
-    routes: async () => {
-      // Static routes
-      return [
-        '/',
-        '/browse',
-        '/articles',
-        '/about',
-        '/pricing',
-        '/login',
-        '/signup',
-        '/stories',
-        '/problems'
-      ]
-    },
-    exclude: [
-      '/admin/**',
-      '/account',
-      '/my-story',
-      '/my-activity',
-      '/my-problem/**',
-      '/chat'
-    ]
-  },
+  modules: ['@nuxt/icon', 'nuxt-splide'],
 
   app: {
     pageTransition: { name: 'page', mode: 'out-in' },
