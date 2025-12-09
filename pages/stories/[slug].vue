@@ -41,10 +41,18 @@
           {{ getInitial(userProfile.displayName) }}
         </div>
 
-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+        <NuxtLink
+          :to="`/users/${userProfile.slug}`"
+          class="text-3xl md:text-4xl font-bold text-gray-900 mb-3 hover:text-blue-600 transition-colors inline-block"
+        >
           {{ userProfile.displayName || 'ผู้ใช้นิรนาม' }}
-        </h1>
-        <p class="text-gray-500">@{{ userProfile.slug }}</p>
+        </NuxtLink>
+        <NuxtLink
+          :to="`/users/${userProfile.slug}`"
+          class="text-gray-500 hover:text-blue-600 transition-colors block"
+        >
+          @{{ userProfile.slug }}
+        </NuxtLink>
       </div>
 
       <!-- Main Content -->
@@ -214,7 +222,7 @@
 <script setup lang="ts">
 import { useFirestore } from '~/composables/useFirestore'
 import { useAuth } from '~/composables/useAuth'
-import { collection, query, where, limit, getDocs, type Timestamp } from 'firebase/firestore'
+import { collection, query, where, orderBy, limit, getDocs, type Timestamp } from 'firebase/firestore'
 import { MOOD_CATEGORIES } from '~/composables/usePosts'
 
 definePageMeta({
@@ -428,16 +436,41 @@ const loadUserStories = async () => {
       title: `${userProfile.value.displayName} - เรื่องราวชีวิต | Nira`
     })
 
-    // Load posts via API (will handle locked posts)
-    const viewerId = user.value?.uid || ''
-    const response = await $fetch(`/api/stories/${userId}/posts`, {
-      query: { viewerId }
-    })
+    // Load user's public story posts from Firestore directly
+    const postsRef = collection(firestore, 'storyPosts')
+    const postsQuery = query(
+      postsRef,
+      where('userId', '==', userId),
+      where('visibility', '==', 'public'),
+      orderBy('createdAt', 'asc'),
+      limit(50)
+    )
+    const postsSnapshot = await getDocs(postsQuery)
 
-    posts.value = response.posts.map((post: any) => ({
-      ...post,
-      createdAt: new Date(post.createdAt)
-    }))
+    console.log('[stories/slug] Found', postsSnapshot.size, 'posts')
+
+    posts.value = postsSnapshot.docs.map(doc => {
+      const data = doc.data()
+      const isLocked = data.isLocked === true
+
+      // If post is locked, check if viewer has permission
+      const canViewLocked = isLocked && user.value?.uid === userId // Only owner can view locked content in stories view
+
+      return {
+        id: doc.id,
+        userId: data.userId,
+        content: isLocked && !canViewLocked ? null : data.content,
+        contentLength: isLocked ? (data.content?.replace(/<[^>]*>/g, '').length || 0) : 0,
+        excerpt: data.excerpt,
+        moodCategory: data.moodCategory,
+        likesCount: data.likesCount || 0,
+        commentsCount: data.commentsCount || 0,
+        viewCount: data.viewCount || 0,
+        createdAt: data.createdAt?.toDate?.() || new Date(),
+        visibility: data.visibility,
+        isLocked: isLocked
+      }
+    })
 
   } catch (error) {
     console.error('Error loading user stories:', error)

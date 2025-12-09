@@ -10,9 +10,20 @@
           <span class="text-gray-900 font-medium">เรื่องราวชีวิต</span>
         </nav>
 
-        <div>
-          <h1 class="text-xl md:text-2xl font-semibold text-gray-900">เรื่องราวชีวิต</h1>
-          <p class="text-xs md:text-sm text-gray-500 mt-1">ผู้ใช้ที่กำลังแชร์ประสบการณ์ชีวิต</p>
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-xl md:text-2xl font-semibold text-gray-900">เรื่องราวชีวิต</h1>
+            <p class="text-xs md:text-sm text-gray-500 mt-1">ผู้ใช้ที่กำลังแชร์ประสบการณ์ชีวิต</p>
+          </div>
+
+          <!-- Write Story Button -->
+          <button
+            @click="handleWriteStory"
+            class="flex items-center gap-2 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-medium transition-all hover:shadow-lg"
+          >
+            <Icon name="lucide:plus" class="w-5 h-5" />
+            <span class="hidden md:inline">เขียนเรื่องราว</span>
+          </button>
         </div>
       </div>
     </header>
@@ -33,16 +44,17 @@
       </div>
 
       <!-- Users grid -->
-      <div
-        v-else-if="users.length > 0"
-        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
-      >
+      <Transition name="fade-in">
         <div
-          v-for="user in users"
-          :key="user.userId"
-          @click="navigateToUserProfile(user.slug)"
-          class="bg-white hover:bg-gray-50 rounded-xl p-4 md:p-5 transition-all cursor-pointer group text-center border border-gray-100 hover:border-gray-200 hover:shadow-md"
+          v-if="!loading && users.length > 0"
+          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
         >
+          <div
+            v-for="user in users"
+            :key="user.userId"
+            @click="navigateToUserProfile(user.slug)"
+            class="bg-white hover:bg-gray-50 rounded-xl p-4 md:p-5 transition-all cursor-pointer group text-center border border-gray-100 hover:border-gray-200 hover:shadow-md"
+          >
           <!-- User avatar -->
           <img
             v-if="user.photoURL"
@@ -76,10 +88,11 @@
           </div>
         </div>
       </div>
+      </Transition>
 
       <!-- Empty state -->
       <div
-        v-else
+        v-if="!loading && users.length === 0"
         class="text-center py-20"
       >
         <Icon name="lucide:users" class="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -107,6 +120,7 @@
 
 <script setup lang="ts">
 import { useFirestore } from '~/composables/useFirestore'
+import { useAuth } from '~/composables/useAuth'
 import { collection, query, where, orderBy, limit, getDocs, type Timestamp } from 'firebase/firestore'
 
 definePageMeta({
@@ -116,6 +130,8 @@ definePageMeta({
 useHead({
   title: 'เรื่องราวชีวิต - Nira'
 })
+
+const { user } = useAuth()
 
 interface ActiveUser {
   userId: string
@@ -153,7 +169,7 @@ const loadUsers = async () => {
   loading.value = true
   try {
     // Get recent posts
-    const postsRef = collection(firestore, 'posts')
+    const postsRef = collection(firestore, 'storyPosts')
     const q = query(
       postsRef,
       where('visibility', '==', 'public'),
@@ -227,6 +243,17 @@ const loadUsers = async () => {
   }
 }
 
+// Handle write story button click
+const handleWriteStory = () => {
+  if (!user.value) {
+    // Redirect to login if not authenticated
+    navigateTo('/login')
+    return
+  }
+  // Redirect to my-story page
+  navigateTo('/my-story')
+}
+
 // Load more users
 const loadMore = () => {
   // For now, just disable load more
@@ -239,5 +266,18 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Add any custom styles here */
+/* Fade-in transition for content */
+.fade-in-enter-active {
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-in-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.fade-in-enter-to {
+  opacity: 1;
+  transform: translateY(0);
+}
 </style>

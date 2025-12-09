@@ -1,28 +1,60 @@
 <template>
   <div class="min-h-screen bg-white">
-    <!-- AI Companion Widget -->
-    <AICompanion :editor-content="content" />
+    <!-- Loading State -->
+    <Transition name="fade">
+      <div v-if="initialLoading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+        <div class="text-center">
+          <!-- Animated Logo/Icon -->
+          <div class="mb-6 flex justify-center">
+            <div class="relative">
+              <div class="w-20 h-20 rounded-full bg-gray-100 animate-pulse flex items-center justify-center">
+                <Icon name="lucide:book-open" class="w-10 h-10 text-gray-400" />
+              </div>
+              <!-- Spinning ring -->
+              <div class="absolute inset-0 rounded-full border-4 border-gray-200 border-t-gray-900 animate-spin" />
+            </div>
+          </div>
 
-    <main class="max-w-2xl mx-auto px-4 py-6">
-      <!-- User Info Section -->
-      <div v-if="!profileLoading && userProfile" class="mb-8 text-center">
-        <div class="flex flex-col items-center gap-3">
-          <img
-            :src="userProfile.photoURL || '/images/default-avatar.png'"
-            :alt="userProfile.displayName || 'User'"
-            class="w-20 h-20 rounded-full object-cover border-2 border-gray-200 shadow-sm"
-          />
-          <div class="text-lg font-semibold text-gray-900">
-            {{ userProfile.displayName || 'ผู้ใช้นิรนาม' }}
+          <!-- Loading Text -->
+          <p class="text-gray-600 font-medium mb-2">กำลังโหลดบันทึกของคุณ</p>
+          <p class="text-gray-400 text-sm">โปรดรอสักครู่...</p>
+
+          <!-- Loading Progress Dots -->
+          <div class="flex justify-center gap-2 mt-4">
+            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0ms" />
+            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 150ms" />
+            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 300ms" />
           </div>
         </div>
       </div>
+    </Transition>
 
-      <h2 style="text-align: center;" class="text-2xl font-bold text-gray-900 mb-8">
-          เริ่มต้นตั้งแต่ฉันจำความได้
-        </h2>
-      <!-- Timeline container -->
-      <div class="relative">
+    <!-- Main Content -->
+    <Transition name="page-fade">
+      <div v-if="!initialLoading">
+        <!-- AI Companion Widget -->
+        <AICompanion :editor-content="content" />
+
+        <main class="max-w-2xl mx-auto px-4 py-6">
+          <!-- User Info Section -->
+          <div v-if="!profileLoading && userProfile" class="mb-8 text-center">
+            <div class="flex flex-col items-center gap-3">
+              <img
+                :src="userProfile.photoURL || '/images/default-avatar.png'"
+                :alt="userProfile.displayName || 'User'"
+                class="w-20 h-20 rounded-full object-cover border-2 border-gray-200 shadow-sm"
+              />
+              <div class="text-lg font-semibold text-gray-900">
+                {{ userProfile.displayName || 'ผู้ใช้นิรนาม' }}
+              </div>
+            </div>
+          </div>
+
+          <h2 style="text-align: center;" class="text-2xl font-bold text-gray-900 mb-8">
+              เริ่มต้นตั้งแต่ฉันจำความได้
+            </h2>
+          <!-- Timeline container -->
+          <div class="relative">
         <!-- Timeline line - thin and subtle -->
         <div class="absolute left-[11px] top-0 bottom-0 w-px bg-gray-200" />
         <!-- User's previous posts (sorted oldest to newest) -->
@@ -79,6 +111,24 @@
                       </button>
                     </div>
 
+                    <!-- Lock toggle -->
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <Icon name="lucide:lock" class="w-4 h-4 text-gray-400" />
+                        <span class="text-xs text-gray-600">ล็อกโพสต์นี้</span>
+                      </div>
+                      <button
+                        @click="editIsLocked = !editIsLocked"
+                        class="relative w-10 h-5 rounded-full transition-colors duration-200"
+                        :class="editIsLocked ? 'bg-gray-900' : 'bg-gray-200'"
+                      >
+                        <span
+                          class="absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-200 shadow-sm"
+                          :class="editIsLocked ? 'left-5' : 'left-0.5'"
+                        />
+                      </button>
+                    </div>
+
                     <!-- Actions -->
                     <div class="flex gap-2">
                       <button
@@ -111,15 +161,9 @@
                   v-html="post.content"
                 />
 
-                <!-- Actions & Date - show on hover (desktop) or always show for owner (mobile) -->
-                <div
-                  class="flex items-center gap-3 mt-2 transition-opacity duration-200"
-                  :class="[
-                    'md:opacity-0 md:group-hover/post:opacity-100',
-                    isMobile ? 'opacity-100' : ''
-                  ]"
-                >
-                  <!-- Date (hidden until hover) -->
+                <!-- Metadata - always visible -->
+                <div class="flex items-center gap-3 mt-2">
+                  <!-- Date -->
                   <span class="text-xs text-gray-400">
                     {{ formatDate(post.createdAt) }}
                   </span>
@@ -129,6 +173,24 @@
                   >
                     {{ MOOD_CATEGORIES[post.moodCategory]?.emoji }}
                   </span>
+                  <!-- Lock icon - always visible -->
+                  <span
+                    v-if="post.isLocked"
+                    class="flex items-center justify-center w-6 h-6 bg-gray-900 rounded-full"
+                    title="โพสต์นี้ถูกล็อก"
+                  >
+                    <Icon name="lucide:lock" class="w-3 h-3 text-white" />
+                  </span>
+                </div>
+
+                <!-- Actions & Stats - show on hover (desktop) or always show for owner (mobile) -->
+                <div
+                  class="flex items-center gap-3 mt-2 transition-opacity duration-200"
+                  :class="[
+                    'md:opacity-0 md:group-hover/post:opacity-100',
+                    isMobile ? 'opacity-100' : ''
+                  ]"
+                >
                   <NuxtLink
                     :to="`/posts/${post.id}`"
                     class="flex items-center gap-1 text-gray-400 hover:text-gray-600 transition-colors text-xs"
@@ -352,7 +414,9 @@
           {{ error }}
         </div>
       </Transition>
-    </main>
+        </main>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -374,6 +438,9 @@ const { posts, loading, hasMore, createPost, updatePost, deletePost, getUserPost
 // User profile for anonymous name and photo
 const userProfile = ref<{ displayName: string | null; photoURL: string | null } | null>(null)
 const profileLoading = ref(true)
+
+// Initial loading state
+const initialLoading = ref(true)
 
 // Editor state
 const content = ref('')
@@ -397,6 +464,7 @@ const checkMobile = () => {
 const editingPostId = ref<string | null>(null)
 const editContent = ref('')
 const editMood = ref<MoodCategory>('normal')
+const editIsLocked = ref(false)
 const editContentRef = ref<HTMLElement | null>(null)
 
 // Insert state
@@ -454,7 +522,7 @@ const savePost = async () => {
     isLocked: isLocked.value,
     tags: [],
     moodCategory: selectedMood.value,
-    postType: 'vent' // Editor creates vent posts
+    postType: 'story' // my-story page creates story posts
   })
 
   saving.value = false
@@ -493,6 +561,7 @@ const startEdit = (post: Post) => {
   editingPostId.value = post.id
   editContent.value = post.content
   editMood.value = post.moodCategory
+  editIsLocked.value = post.isLocked || false
 }
 
 const handleEditInput = (e: Event) => {
@@ -506,13 +575,15 @@ const saveEdit = async () => {
   saving.value = true
   const success = await updatePost(editingPostId.value, {
     content: editContent.value,
-    moodCategory: editMood.value
+    moodCategory: editMood.value,
+    isLocked: editIsLocked.value
   })
   saving.value = false
 
   if (success) {
     editingPostId.value = null
     editContent.value = ''
+    editIsLocked.value = false
     // Reload posts to show updated content
     if (user.value) {
       await getUserPosts(user.value.uid, 10)
@@ -524,6 +595,7 @@ const cancelEdit = () => {
   editingPostId.value = null
   editContent.value = ''
   editMood.value = 'normal'
+  editIsLocked.value = false
 }
 
 // === Insert Functions ===
@@ -658,6 +730,11 @@ onMounted(async () => {
       loadUserProfile()
     ])
   }
+
+  // Hide loading screen with smooth fade out
+  setTimeout(() => {
+    initialLoading.value = false
+  }, 800)
 })
 
 onUnmounted(() => {
@@ -732,5 +809,20 @@ onUnmounted(() => {
 .slide-up-leave-to {
   opacity: 0;
   transform: translateY(20px);
+}
+
+/* Page fade transition for main content */
+.page-fade-enter-active {
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-fade-enter-to {
+  opacity: 1;
+  transform: translateY(0);
 }
 </style>

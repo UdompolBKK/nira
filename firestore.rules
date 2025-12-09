@@ -77,6 +77,29 @@ service cloud.firestore {
     }
 
     // ============================================
+    // Story Posts Collection (เรื่องราวชีวิต - autobiographical stories)
+    // ============================================
+    match /storyPosts/{postId} {
+      // อ่านได้ถ้า:
+      // 1. โพสต์เป็น public
+      // 2. เป็นเจ้าของโพสต์
+      // 3. เป็น admin
+      allow read: if resource.data.visibility == 'public'
+                  || isOwner(resource.data.userId)
+                  || isAdmin();
+
+      // สร้างได้เมื่อ login
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid;
+
+      // แก้ไขได้เฉพาะเจ้าของ
+      allow update: if isOwner(resource.data.userId);
+
+      // ลบได้เฉพาะเจ้าของ หรือ admin
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    // ============================================
     // Comments Collection
     // ============================================
     match /comments/{commentId} {
