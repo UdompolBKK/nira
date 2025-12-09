@@ -739,6 +739,7 @@
                   <img
                     v-if="trainingBot.avatar"
                     :src="trainingBot.avatar"
+                    :alt="trainingBot.name"
                     class="w-full h-full object-cover rounded-full"
                   />
                   <Icon v-else name="lucide:bot" class="w-8 h-8 text-purple-400" />
@@ -769,6 +770,7 @@
                     <img
                       v-if="trainingBot.avatar"
                       :src="trainingBot.avatar"
+                      :alt="trainingBot.name"
                       class="w-full h-full object-cover"
                     />
                     <Icon v-else name="lucide:bot" class="w-4 h-4 text-purple-400" />
@@ -803,6 +805,7 @@
                     <img
                       v-if="trainingBot.avatar"
                       :src="trainingBot.avatar"
+                      :alt="trainingBot.name"
                       class="w-full h-full object-cover"
                     />
                     <Icon v-else name="lucide:bot" class="w-4 h-4 text-purple-400" />

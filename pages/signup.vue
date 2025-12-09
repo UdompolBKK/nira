@@ -46,7 +46,34 @@
 
 <script setup lang="ts">
 import { useAuth } from '~/composables/useAuth'
+import { useFirebase } from '~/composables/useFirebase'
+import { collection, query, where, limit, getDocs } from 'firebase/firestore'
+
+definePageMeta({
+  layout: 'default'
+})
+
+useHead({
+  title: 'สมัครสมาชิก - บันทึกนิรนาม',
+  meta: [
+    {
+      name: 'description',
+      content: 'สร้างบัญชีฟรี เริ่มเขียนบันทึกนิรนาม คุยกับ AI companion และเชื่อมต่อกับชุมชนที่ปลอดภัย แพลตฟอร์มบันทึกความรู้สึกส่วนตัว'
+    },
+    { property: 'og:title', content: 'สมัครสมาชิก - บันทึกนิรนาม' },
+    {
+      property: 'og:description',
+      content: 'สร้างบัญชีฟรี เริ่มเขียนบันทึกนิรนาม คุยกับ AI companion'
+    },
+    { property: 'og:type', content: 'website' },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: 'สมัครสมาชิก - บันทึกนิรนาม' },
+    { name: 'twitter:description', content: 'สร้างบัญชีฟรี เริ่มเขียนบันทึกนิรนาม' }
+  ]
+})
+
 const { user, signUpWithEmail, signInWithGoogle, loading, error } = useAuth()
+const { firestore } = useFirebase()
 
 const email = ref('')
 const password = ref('')
@@ -58,10 +85,29 @@ watchEffect(() => {
   }
 })
 
+// Check if user has any posts
+const checkUserHasPosts = async (userId: string): Promise<boolean> => {
+  if (!firestore) return false
+
+  try {
+    const postsQuery = query(
+      collection(firestore, 'posts'),
+      where('userId', '==', userId),
+      limit(1)
+    )
+    const snapshot = await getDocs(postsQuery)
+    return !snapshot.empty
+  } catch (err) {
+    console.error('Error checking user posts:', err)
+    return false
+  }
+}
+
 const submit = async () => {
   const cred = await signUpWithEmail(email.value, password.value)
   if (cred) {
-    navigateTo('/editor')
+    // New signup always goes to my-activity
+    navigateTo('/my-activity')
   }
 }
 
@@ -69,7 +115,16 @@ const submit = async () => {
 const onGoogleSignUp = async () => {
   const cred = await signInWithGoogle()
   if (cred) {
-    navigateTo('/editor')
+    // Check if user has posts (might be existing user)
+    const hasPosts = await checkUserHasPosts(cred.user.uid)
+
+    if (hasPosts) {
+      // User has posts, go to home
+      navigateTo('/')
+    } else {
+      // New user, go to my-activity
+      navigateTo('/my-activity')
+    }
   }
 }
 </script>
