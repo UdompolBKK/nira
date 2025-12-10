@@ -36,7 +36,7 @@
             </div>
             <div class="flex-1">
               <p class="text-sm font-medium text-gray-700">{{ displayName }}</p>
-              <p class="text-xs text-gray-500">แชร์ความรู้สึกของคุณ</p>
+              <p class="text-xs text-gray-500">{{ userProfile?.slug || 'ผู้ใช้นิรนาม' }}</p>
             </div>
           </div>
 
@@ -57,14 +57,14 @@
           <!-- Textarea Full Width -->
           <textarea
             v-model="newPost"
-            placeholder="แชร์ความรู้สึกของคุณ... ไม่ว่าจะเป็นความเครียด ความกังวล หรือสิ่งที่อยากระบาย 💭"
+            :placeholder="selectedBot?.greeting || 'แชร์ความรู้สึกของคุณ... ไม่ว่าจะเป็นความเครียด ความกังวล หรือสิ่งที่อยากระบาย 💭'"
             :class="[
               'w-full min-h-32 md:min-h-28 p-4 border-2 rounded-xl md:rounded-2xl focus:outline-none focus:ring-2 focus:border-transparent resize-none text-gray-900 placeholder-gray-400 text-base',
               editingPostId
                 ? 'border-blue-300 focus:ring-blue-500'
                 : 'border-gray-200 focus:ring-pink-500'
             ]"
-            maxlength="500"
+            maxlength="2500"
           ></textarea>
 
           <!-- Mood Selector - Wrap to Multiple Lines -->
@@ -90,8 +90,8 @@
           <!-- Character Count & Post Button -->
           <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-2 md:gap-3">
-              <span :class="['text-xs md:text-sm font-medium', newPost.length > 450 ? 'text-red-500' : 'text-gray-500']">
-                {{ newPost.length }}/500
+              <span :class="['text-xs md:text-sm font-medium', newPost.length > 2250 ? 'text-red-500' : 'text-gray-500']">
+                {{ newPost.length }}/2500
               </span>
               <div v-if="newPost.length > 0" class="hidden sm:flex items-center gap-2 text-xs md:text-sm text-gray-600">
                 <Icon name="lucide:lock" class="w-3 h-3 md:w-4 md:h-4" />
@@ -209,6 +209,7 @@ useHead({
 const { user } = useAuth()
 const { firestore } = useFirestore()
 const { createNotification } = useNotifications()
+const { selectedBot, initializeSelectedBot } = useBotConfig()
 
 const newPost = ref('')
 const isPosting = ref(false)
@@ -224,10 +225,8 @@ interface VentPost {
   id: string
   content: string
   authorId: string
-  authorName: string
   authorInitial: string
   authorPhotoURL?: string | null
-  isAnonymous: boolean
   mood: string
   createdAt: any
   editedAt?: any
@@ -345,12 +344,12 @@ const handlePost = async () => {
       await addDoc(ventPostsRef, {
         content: postContent,
         authorId: user.value.uid,
-        isAnonymous: true,
         mood: postMood,
         createdAt: serverTimestamp(),
         likesCount: 0,
         commentsCount: 0,
-        likes: []
+        likes: [],
+        viewCount: 0
       })
 
       // Clear form
@@ -551,6 +550,9 @@ onMounted(() => {
   // Load user profile
   loadUserProfile()
 
+  // Initialize selected bot
+  initializeSelectedBot()
+
   if (!firestore) {
     console.error('Firestore not initialized')
     loading.value = false
@@ -567,7 +569,6 @@ onMounted(() => {
         const data = docSnapshot.data()
 
         // ดึง profile จาก users collection
-        let authorName = 'ผู้ใช้นิรนาม'
         let authorInitial = 'U'
         let authorPhotoURL = null
 
@@ -575,7 +576,7 @@ onMounted(() => {
           const userDoc = await getDoc(doc(firestore, 'users', data.authorId))
           if (userDoc.exists()) {
             const userData = userDoc.data()
-            authorName = userData.displayName || userData.slug || 'ผู้ใช้นิรนาม'
+            const authorName = userData.displayName || userData.slug || 'ผู้ใช้นิรนาม'
             authorInitial = authorName.charAt(0).toUpperCase()
             authorPhotoURL = userData.photoURL || null
           }
@@ -585,10 +586,16 @@ onMounted(() => {
 
         return {
           id: docSnapshot.id,
-          ...data,
-          authorName,
+          content: data.content,
+          authorId: data.authorId,
           authorInitial,
           authorPhotoURL,
+          mood: data.mood,
+          createdAt: data.createdAt,
+          editedAt: data.editedAt,
+          likesCount: data.likesCount || 0,
+          commentsCount: data.commentsCount || 0,
+          likes: data.likes || [],
           isLiked: data.likes?.includes(user.value?.uid),
           isOwner: data.authorId === user.value?.uid,
           showComments: false,
