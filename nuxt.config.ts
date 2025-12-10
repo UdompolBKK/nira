@@ -68,8 +68,16 @@ export default defineNuxtConfig({
         { rel: 'icon', type: 'image/png', href: '/nira.png' },
         { rel: 'canonical', href: 'https://anonymous-diary.app' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'anonymous' },
-        { href: 'https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap', rel: 'stylesheet' }
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+        {
+          rel: 'preload',
+          as: 'style',
+          href: 'https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap'
+        },
+        {
+          href: 'https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap',
+          rel: 'stylesheet'
+        }
       ],
       script: [
         // Google Analytics 4

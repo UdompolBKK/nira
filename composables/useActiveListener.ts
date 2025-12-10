@@ -94,7 +94,7 @@ export const useActiveListener = () => {
   }
 
   // Start listening
-  const startListening = async () => {
+  const startListening = async (botGreeting?: string) => {
     isListening.value = true
     characterMood.value = 'idle'
     console.log('[ActiveListener] Started listening')
@@ -104,9 +104,17 @@ export const useActiveListener = () => {
 
     // Show initial greeting after a delay
     setTimeout(() => {
-      const greetings = ENCOURAGEMENTS.start
-      const random = greetings[Math.floor(Math.random() * greetings.length)]
-      showResponse(random)
+      // Use bot's greeting message if provided, otherwise use default
+      if (botGreeting) {
+        showResponse({
+          message: botGreeting,
+          emotion: 'caring'
+        })
+      } else {
+        const greetings = ENCOURAGEMENTS.start
+        const random = greetings[Math.floor(Math.random() * greetings.length)]
+        showResponse(random)
+      }
     }, 1500)
   }
 

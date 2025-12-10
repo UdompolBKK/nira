@@ -43,7 +43,7 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['Sarabun', 'ui-sans-serif', 'system-ui'],
+        sans: ['"Prompt"', 'sans-serif'],
       },
       container: {
         center: true,

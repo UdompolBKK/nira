@@ -36,6 +36,7 @@ export const useBotConfig = () => {
   const error = ref<string | null>(null)
   const bots = ref<BotConfig[]>([])
   const trainingExamples = ref<TrainingExample[]>([])
+  const selectedBot = ref<BotConfig | null>(null)
 
   // Get auth token for API calls
   const getAuthToken = async (): Promise<string | null> => {
@@ -90,10 +91,84 @@ export const useBotConfig = () => {
 
   const getDefaultBot = async (): Promise<BotConfig | null> => {
     try {
-      const allBots = bots.value.length > 0 ? bots.value : await getBots()
-      return allBots.find(bot => bot.isDefault && bot.isActive) || null
-    } catch {
+      // Try to get from bots list first (for admin page)
+      if (bots.value.length > 0) {
+        const defaultBot = bots.value.find(bot => bot.isDefault && bot.isActive) || null
+        selectedBot.value = defaultBot
+        return defaultBot
+      }
+
+      // Otherwise, use public endpoint (for regular users)
+      console.log('[useBotConfig] Fetching default bot from /api/bot/default...')
+      const response = await $fetch<{ bot: BotConfig | null }>('/api/bot/default')
+
+      if (response.bot) {
+        selectedBot.value = {
+          ...response.bot,
+          createdAt: new Date(response.bot.createdAt),
+          updatedAt: new Date(response.bot.updatedAt)
+        }
+        console.log('[useBotConfig] Default bot loaded:', selectedBot.value.name)
+      } else {
+        console.warn('[useBotConfig] No default bot found')
+      }
+
+      return selectedBot.value
+    } catch (err) {
+      console.error('[useBotConfig] Error getting default bot:', err)
       return null
+    }
+  }
+
+  // Get bot by ID (for user preference)
+  const getBotById = async (botId: string): Promise<BotConfig | null> => {
+    try {
+      console.log('[useBotConfig] Fetching bot by ID:', botId)
+      const response = await $fetch<{ bot: BotConfig | null }>(`/api/bot/${botId}`)
+
+      if (response.bot) {
+        selectedBot.value = {
+          ...response.bot,
+          createdAt: new Date(response.bot.createdAt),
+          updatedAt: new Date(response.bot.updatedAt)
+        }
+        console.log('[useBotConfig] Bot loaded:', selectedBot.value.name)
+      }
+
+      return selectedBot.value
+    } catch (err) {
+      console.error('[useBotConfig] Error getting bot by ID:', err)
+      return null
+    }
+  }
+
+  // Auto-load selected bot based on user preference
+  const initializeSelectedBot = async () => {
+    if (selectedBot.value) return // Already loaded
+
+    try {
+      // Check if user has a bot preference
+      if (user.value?.uid) {
+        console.log('[useBotConfig] Checking user bot preference...')
+        const prefResponse = await $fetch<{ botId: string | null }>('/api/user/bot-preference', {
+          params: { userId: user.value.uid }
+        })
+
+        if (prefResponse.botId) {
+          console.log('[useBotConfig] User has bot preference:', prefResponse.botId)
+          // Load user's preferred bot
+          await getBotById(prefResponse.botId)
+          return
+        }
+      }
+
+      // No preference - load default bot
+      console.log('[useBotConfig] No user preference, loading default bot...')
+      await getDefaultBot()
+    } catch (err) {
+      console.error('[useBotConfig] Error initializing bot:', err)
+      // Fallback to default bot
+      await getDefaultBot()
     }
   }
 
@@ -236,9 +311,12 @@ export const useBotConfig = () => {
     error,
     bots,
     trainingExamples,
+    selectedBot,
     // Bot Config
     getBots,
     getDefaultBot,
+    getBotById,
+    initializeSelectedBot,
     createBot,
     updateBot,
     deleteBot,

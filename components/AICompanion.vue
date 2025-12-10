@@ -1,9 +1,12 @@
 <template>
-  <div class="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+  <div
+    class="fixed right-6 z-40 flex flex-col items-end gap-3 transition-all duration-300"
+    :style="{ bottom: keyboardOffset + 'px' }"
+  >
     <!-- Speech Bubble - Always show when there's a message and bot is enabled -->
     <Transition name="bubble">
       <div
-        v-if="showBubble && currentResponse && isBotEnabled && !showSkinSelector"
+        v-if="showBubble && currentResponse && isBotEnabled && !showSkinSelector && !isBotLoading"
         class="relative max-w-[220px] px-4 py-3 bg-white rounded-2xl shadow-lg border border-gray-100"
       >
         <!-- Bubble tail -->
@@ -16,8 +19,38 @@
       </div>
     </Transition>
 
-    <!-- Character Container - Always visible -->
-    <div class="relative group">
+    <!-- Bot Container - Fixed position to prevent jumping -->
+    <div class="relative w-20 h-20">
+      <!-- AI Loading Animation -->
+      <Transition name="fade-scale">
+        <div v-if="isBotLoading" class="absolute inset-0">
+          <!-- Outer rotating ring -->
+          <div class="absolute inset-0 border-4 border-transparent border-t-purple-500 border-r-pink-500 rounded-full animate-spin" />
+
+          <!-- Middle pulsing ring -->
+          <div class="absolute inset-2 border-3 border-transparent border-b-blue-400 border-l-cyan-400 rounded-full animate-spin-reverse" />
+
+          <!-- Inner core with gradient -->
+          <div class="absolute inset-4 bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 rounded-full animate-pulse-glow">
+            <!-- AI brain icon -->
+            <div class="absolute inset-0 flex items-center justify-center">
+              <Icon name="lucide:brain-circuit" class="w-6 h-6 text-white animate-pulse" />
+            </div>
+          </div>
+
+          <!-- Particles effect -->
+          <div class="absolute inset-0">
+            <div class="absolute top-0 left-1/2 w-1 h-1 bg-purple-400 rounded-full animate-particle-1" />
+            <div class="absolute top-1/2 right-0 w-1 h-1 bg-pink-400 rounded-full animate-particle-2" />
+            <div class="absolute bottom-0 left-1/2 w-1 h-1 bg-blue-400 rounded-full animate-particle-3" />
+            <div class="absolute top-1/2 left-0 w-1 h-1 bg-cyan-400 rounded-full animate-particle-4" />
+          </div>
+        </div>
+      </Transition>
+
+      <!-- Character Container - Show after loading -->
+      <Transition name="bot-appear">
+        <div v-if="!isBotLoading" class="absolute inset-0 group">
       <!-- Bot Avatar Wrapper - Moves up on hover -->
       <div
         class="transition-all duration-300 group-hover:-translate-y-10"
@@ -110,6 +143,8 @@
           </span>
         </button>
       </div>
+        </div>
+      </Transition>
     </div>
 
     <!-- Bot Skin Selector Modal -->
@@ -227,8 +262,14 @@ const loadingBots = ref(false)
 const botList = ref<BotInfo[]>([])
 const selectedBot = ref<BotInfo | null>(null)
 
+// Bot loading state - show loading animation during initialization
+const isBotLoading = ref(true)
+
 // Bot enabled/disabled state
 const isBotEnabled = ref(true)
+
+// Keyboard offset - adjust bot position when keyboard appears on mobile
+const keyboardOffset = ref(24) // Default: 24px (bottom-6)
 
 // Toggle bot on/off
 const toggleBot = () => {
@@ -384,16 +425,26 @@ const mouthClass = computed(() => {
 let idleTimer: NodeJS.Timeout | null = null
 
 onMounted(async () => {
+  // Show loading animation while initializing
+  isBotLoading.value = true
+
   // Load bot enabled state from localStorage
   loadBotEnabledState()
-
-  // Start listening automatically
-  startListening()
 
   // Load bot list first
   await loadBotList()
   // Then load saved selection from database (will override default if found)
   await loadSavedBotSelection()
+
+  // Hide loading and show bot with transition
+  setTimeout(() => {
+    isBotLoading.value = false
+
+    // Start listening automatically with bot's greeting after bot appears
+    setTimeout(() => {
+      startListening(selectedBot.value?.greeting)
+    }, 300) // Wait for bot-appear transition to complete
+  }, 800) // Show loading for at least 800ms for smooth UX
 
   // Trigger idle responses periodically
   idleTimer = setInterval(() => {
@@ -404,10 +455,41 @@ onMounted(async () => {
       }
     }
   }, 30000) // Every 30 seconds
+
+  // Detect virtual keyboard on mobile and adjust bot position
+  if (import.meta.client && window.visualViewport) {
+    const handleViewportResize = () => {
+      const viewport = window.visualViewport
+      if (!viewport) return
+
+      // Calculate keyboard height
+      const viewportHeight = viewport.height
+      const windowHeight = window.innerHeight
+      const keyboardHeight = windowHeight - viewportHeight
+
+      // If keyboard is visible (height > 100px), move bot up
+      if (keyboardHeight > 100) {
+        // Position bot above keyboard with some padding
+        keyboardOffset.value = keyboardHeight + 24
+      } else {
+        // Reset to default position
+        keyboardOffset.value = 24
+      }
+    }
+
+    window.visualViewport.addEventListener('resize', handleViewportResize)
+    window.visualViewport.addEventListener('scroll', handleViewportResize)
+  }
 })
 
 onUnmounted(() => {
   if (idleTimer) clearInterval(idleTimer)
+
+  // Cleanup visualViewport listeners
+  if (import.meta.client && window.visualViewport) {
+    window.visualViewport.removeEventListener('resize', () => {})
+    window.visualViewport.removeEventListener('scroll', () => {})
+  }
 })
 </script>
 
@@ -480,5 +562,145 @@ onUnmounted(() => {
 
 .animate-blink {
   animation: blink 4s ease-in-out infinite;
+}
+
+/* AI Loading Animations */
+@keyframes spin-reverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+.animate-spin-reverse {
+  animation: spin-reverse 1.5s linear infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Particle animations */
+@keyframes particle-1 {
+  0%, 100% {
+    transform: translate(0, 0) scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(0, -20px) scale(1.5);
+    opacity: 1;
+  }
+}
+
+@keyframes particle-2 {
+  0%, 100% {
+    transform: translate(0, 0) scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(20px, 0) scale(1.5);
+    opacity: 1;
+  }
+}
+
+@keyframes particle-3 {
+  0%, 100% {
+    transform: translate(0, 0) scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(0, 20px) scale(1.5);
+    opacity: 1;
+  }
+}
+
+@keyframes particle-4 {
+  0%, 100% {
+    transform: translate(0, 0) scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(-20px, 0) scale(1.5);
+    opacity: 1;
+  }
+}
+
+.animate-particle-1 {
+  animation: particle-1 2s ease-in-out infinite;
+}
+
+.animate-particle-2 {
+  animation: particle-2 2s ease-in-out infinite 0.5s;
+}
+
+.animate-particle-3 {
+  animation: particle-3 2s ease-in-out infinite 1s;
+}
+
+.animate-particle-4 {
+  animation: particle-4 2s ease-in-out infinite 1.5s;
+}
+
+/* Fade-scale transition for loading */
+.fade-scale-enter-active {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.fade-scale-leave-active {
+  transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+}
+
+.fade-scale-enter-from {
+  opacity: 0;
+  transform: scale(0.3) rotate(-180deg);
+}
+
+.fade-scale-leave-to {
+  opacity: 0;
+  transform: scale(1.3);
+}
+
+/* Bot appear transition - smooth fade and zoom in */
+.bot-appear-enter-active {
+  animation: bot-appear-in 2s ease-in-out;
+}
+
+.bot-appear-leave-active {
+  animation: bot-appear-out 0.3s ease-out;
+}
+
+@keyframes bot-appear-in {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes bot-appear-out {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
 }
 </style>
