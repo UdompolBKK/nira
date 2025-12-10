@@ -13,17 +13,37 @@ export default defineEventHandler(async (event) => {
 
   try {
     const db = adminFirestore()
-    const snapshot = await db.collection('posts')
+    const snapshot = await db.collection('storyPosts')
       .where('userId', '==', userId)
       .orderBy('createdAt', order as 'asc' | 'desc')
       .limit(limitCount)
       .get()
+
+    // Fetch user profile for author data
+    let authorName = 'ไม่ระบุชื่อ'
+    let authorSlug = null
+    let authorPhoto = null
+
+    try {
+      const userDoc = await db.collection('users').doc(userId).get()
+      if (userDoc.exists) {
+        const userData = userDoc.data()
+        authorName = userData?.displayName || userData?.slug || 'ไม่ระบุชื่อ'
+        authorSlug = userData?.slug || null
+        authorPhoto = userData?.photoURL || null
+      }
+    } catch (err) {
+      console.error('Error fetching user profile:', err)
+    }
 
     const posts = snapshot.docs.map(doc => {
       const data = doc.data()
       return {
         id: doc.id,
         ...data,
+        authorName,
+        authorSlug,
+        authorPhoto,
         createdAt: data.createdAt?.toDate?.() || new Date(),
         updatedAt: data.updatedAt?.toDate?.() || new Date()
       }

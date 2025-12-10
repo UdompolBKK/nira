@@ -469,9 +469,8 @@ onMounted(async () => {
 
       // If keyboard is visible (height > 100px), move bot up
       if (keyboardHeight > 100) {
-        // Position bot just above keyboard with minimal padding (8px)
-        // Reduced from 24px to prevent bot from jumping too high
-        keyboardOffset.value = keyboardHeight + 8
+        // Position bot above keyboard with some padding
+        keyboardOffset.value = keyboardHeight + 24
       } else {
         // Reset to default position
         keyboardOffset.value = 24

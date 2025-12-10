@@ -143,13 +143,16 @@ layouts/         # 3 layouts
 
 ## Firebase Collections
 - `users` - ข้อมูล user + isPremium + role
-- `posts` - ไดอารี่/โพสต์
+- `storyPosts` - บันทึกไดอารี่ (my-story page)
+- `ventPosts` - โพสต์ระบายความรู้สึก (my-problem page)
 - `comments` - ความคิดเห็น
 - `emotions` - reactions (like, sad, happy)
 - `friends` - ความสัมพันธ์เพื่อน
 - `friendRequests` - คำขอเป็นเพื่อน
 - `subscriptions` - Premium subscriptions
 - `botChats` - ประวัติแชท AI Bot
+- `botConfigs` - AI Bot configurations and skins
+- `userBotPreferences` - User's selected bot preferences
 - `notifications` - การแจ้งเตือน
 - `reports` - รายงานโพสต์/ผู้ใช้มีปัญหา
 - `pageviews` - Analytics
