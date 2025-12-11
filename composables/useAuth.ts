@@ -225,6 +225,23 @@ export const useAuth = () => {
   }
 
   /**
+   * Get Firebase ID Token for API authentication
+   */
+  const getIdToken = async (): Promise<string | null> => {
+    const auth = getAuthInstance()
+    if (!auth || !auth.currentUser) {
+      return null
+    }
+
+    try {
+      return await auth.currentUser.getIdToken()
+    } catch (err) {
+      console.error('Get ID token error:', err)
+      return null
+    }
+  }
+
+  /**
    * Get user-friendly error messages
    */
   const getErrorMessage = (code: string): string => {
@@ -311,6 +328,7 @@ export const useAuth = () => {
     signUpWithEmail,
     signInWithGoogle,
     sendEmailVerification,
-    logout
+    logout,
+    getIdToken
   }
 }

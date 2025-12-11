@@ -36,11 +36,23 @@
         <h4 v-else class="font-semibold text-gray-900 truncate">{{ post.authorName }}</h4>
         <p class="text-xs text-gray-500">{{ formatTimeAgo(post.createdAt) }}</p>
       </div>
-      <div
-        class="px-3 py-1 rounded-full text-xs flex-shrink-0"
-        :class="MOOD_CATEGORIES[post.moodCategory]?.color || 'bg-gray-100'"
-      >
-        {{ MOOD_CATEGORIES[post.moodCategory]?.emoji }}
+      <div class="flex flex-col gap-1 flex-shrink-0 items-end">
+        <!-- Room Badge -->
+        <span
+          v-if="post.roomName"
+          class="px-2 py-0.5 rounded-full text-xs text-white flex items-center gap-1"
+          :style="{ backgroundColor: post.roomColor || '#6B7280' }"
+        >
+          <Icon :name="post.roomIcon || 'lucide:door-open'" class="w-3 h-3" />
+          {{ post.roomName }}
+        </span>
+        <!-- Mood Badge -->
+        <div
+          class="px-3 py-1 rounded-full text-xs"
+          :class="MOOD_CATEGORIES[post.moodCategory]?.color || 'bg-gray-100'"
+        >
+          {{ MOOD_CATEGORIES[post.moodCategory]?.emoji }}
+        </div>
       </div>
     </div>
     <p class="text-gray-700 text-sm mb-4 leading-relaxed line-clamp-3">
@@ -123,16 +135,27 @@
                 </span>
               </p>
             </div>
-            <!-- Mood Badge -->
-            <span
-              :class="[
-                'px-3 py-1 rounded-full text-xs font-medium flex-shrink-0',
-                MOOD_CATEGORIES[post.moodCategory || post.mood]?.color || 'bg-gray-100'
-              ]"
-            >
-              {{ MOOD_CATEGORIES[post.moodCategory || post.mood]?.emoji || '😐' }}
-              {{ MOOD_CATEGORIES[post.moodCategory || post.mood]?.label || 'ปกติ' }}
-            </span>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <!-- Room Badge -->
+              <span
+                v-if="post.roomName"
+                class="px-3 py-1 rounded-full text-xs font-medium text-white flex items-center gap-1"
+                :style="{ backgroundColor: post.roomColor || '#6B7280' }"
+              >
+                <Icon :name="post.roomIcon || 'lucide:door-open'" class="w-3 h-3" />
+                {{ post.roomName }}
+              </span>
+              <!-- Mood Badge -->
+              <span
+                :class="[
+                  'px-3 py-1 rounded-full text-xs font-medium',
+                  MOOD_CATEGORIES[post.moodCategory || post.mood]?.color || 'bg-gray-100'
+                ]"
+              >
+                {{ MOOD_CATEGORIES[post.moodCategory || post.mood]?.emoji || '😐' }}
+                {{ MOOD_CATEGORIES[post.moodCategory || post.mood]?.label || 'ปกติ' }}
+              </span>
+            </div>
           </div>
 
           <!-- Content -->
@@ -268,6 +291,10 @@ interface VentPost {
   authorPhoto?: string | null
   mood?: string
   moodCategory?: string
+  roomId?: string
+  roomName?: string
+  roomIcon?: string
+  roomColor?: string
   createdAt: any
   editedAt?: any
   likesCount?: number

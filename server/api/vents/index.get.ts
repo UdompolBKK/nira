@@ -5,12 +5,18 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const limitCount = Math.min(parseInt(query.limit as string) || 10, 50)
   const startAfterTimestamp = query.startAfter as string
+  const roomId = query.roomId as string
 
   try {
     const db = adminFirestore()
-    let ventsQuery = db.collection('ventPosts')
-      .orderBy('createdAt', 'desc')
-      .limit(limitCount)
+    let ventsQuery: FirebaseFirestore.Query = db.collection('ventPosts')
+
+    // Filter by room if roomId is provided
+    if (roomId) {
+      ventsQuery = ventsQuery.where('roomId', '==', roomId)
+    }
+
+    ventsQuery = ventsQuery.orderBy('createdAt', 'desc').limit(limitCount)
 
     if (startAfterTimestamp) {
       const startDate = new Date(startAfterTimestamp)
@@ -76,6 +82,7 @@ export default defineEventHandler(async (event) => {
         content: data.content,
         excerpt: data.excerpt || data.content?.replace(/<[^>]*>/g, '').substring(0, 150),
         moodCategory: data.moodCategory || 'normal',
+        roomId: data.roomId || null,
         likeCount: likeCount,
         commentCount: data.commentsCount || 0,
         viewCount: data.viewCount || 0,

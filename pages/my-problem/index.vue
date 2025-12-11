@@ -1,146 +1,139 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 pb-24">
-    <!-- Hero Section - Mobile Optimized -->
-    <div class="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white py-12 md:py-16">
-      <div class="max-w-4xl mx-auto px-4 text-center">
-        <div class="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-white/20 backdrop-blur-sm rounded-full mb-4 md:mb-6 animate-pulse">
-          <Icon name="lucide:heart-handshake" class="w-8 h-8 md:w-10 md:h-10" />
+  <div class="min-h-screen bg-gray-50 pb-24">
+    <!-- Minimal Header -->
+    <div class="sticky top-0 z-30 bg-white/80 backdrop-blur-lg border-b border-gray-100">
+      <div class="max-w-2xl mx-auto px-4 py-4">
+        <div class="flex items-center justify-between">
+          <h1 class="text-lg font-semibold text-gray-900">ระบายความรู้สึก</h1>
+          <div class="flex items-center gap-2 text-xs text-gray-500">
+            <Icon name="lucide:shield-check" class="w-4 h-4" />
+            <span>นิรนาม</span>
+          </div>
         </div>
-        <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4">
-          ระบายความรู้สึก
-        </h1>
-        <p class="text-base md:text-xl text-white/90 max-w-2xl mx-auto px-4">
-          พื้นที่ปลอดภัยสำหรับการแชร์ความรู้สึกและรับกำลังใจจากเพื่อนในชุมชน
-        </p>
       </div>
     </div>
 
-    <div class="max-w-4xl mx-auto px-3 md:px-4 -mt-6 md:-mt-8 pb-12">
-      <!-- Create Post Card - Mobile Optimized -->
-      <div class="bg-white rounded-2xl md:rounded-3xl shadow-xl p-4 md:p-6 mb-6 md:mb-8 border-2 border-pink-200">
-        <!-- Avatar & Textarea Stack on Mobile -->
-        <div class="flex flex-col gap-4">
-          <!-- Avatar Row -->
+    <div class="max-w-2xl mx-auto px-4 py-6">
+      <!-- Create Post Card - Minimal Design -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-8">
+        <!-- Editing Badge -->
+        <div v-if="editingPostId" class="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+          <div class="flex items-center gap-2 text-sm font-medium text-gray-700">
+            <Icon name="lucide:edit-3" class="w-4 h-4" />
+            <span>กำลังแก้ไขโพสต์</span>
+          </div>
+          <button
+            @click="cancelEdit"
+            class="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            ยกเลิก
+          </button>
+        </div>
+
+        <!-- Textarea -->
+        <textarea
+          v-model="newPost"
+          :placeholder="selectedBot?.greeting || 'คุณรู้สึกอย่างไรวันนี้...'"
+          class="w-full min-h-[120px] p-0 border-0 focus:outline-none focus:ring-0 resize-none text-gray-900 placeholder-gray-400 text-base leading-relaxed"
+          maxlength="2500"
+        ></textarea>
+
+        <!-- Divider -->
+        <div class="border-t border-gray-100 my-4"></div>
+
+        <!-- Options Row -->
+        <div class="space-y-4">
+          <!-- Room Selector -->
+          <div v-if="rooms.length > 0" class="flex items-center gap-3">
+            <Icon name="lucide:hash" class="w-4 h-4 text-gray-400 flex-shrink-0" />
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="room in rooms"
+                :key="room.id"
+                @click="selectedRoom = room.id"
+                :class="[
+                  'px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5',
+                  selectedRoom === room.id
+                    ? 'text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ]"
+                :style="selectedRoom === room.id ? { backgroundColor: room.color } : {}"
+              >
+                <Icon :name="room.icon" class="w-3.5 h-3.5" />
+                {{ room.name }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Mood Selector -->
           <div class="flex items-center gap-3">
-            <img
-              v-if="userProfile?.photoURL"
-              :src="userProfile.photoURL"
-              alt="Profile"
-              class="w-12 h-12 md:w-14 md:h-14 rounded-full object-cover flex-shrink-0 shadow-lg border-2 border-pink-200"
-            />
-            <div
-              v-else
-              class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-base md:text-lg flex-shrink-0 shadow-lg"
-            >
-              {{ userInitial }}
-            </div>
-            <div class="flex-1">
-              <p class="text-sm font-medium text-gray-700">{{ displayName }}</p>
-              <p class="text-xs text-gray-500">{{ userProfile?.slug || 'ผู้ใช้นิรนาม' }}</p>
-            </div>
-          </div>
-
-          <!-- Editing Badge -->
-          <div v-if="editingPostId" class="flex items-center justify-between mb-2">
-            <div class="flex items-center gap-2 text-sm font-medium text-blue-600">
-              <Icon name="lucide:edit-3" class="w-4 h-4" />
-              <span>กำลังแก้ไขโพสต์</span>
-            </div>
-            <button
-              @click="cancelEdit"
-              class="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              ยกเลิก
-            </button>
-          </div>
-
-          <!-- Textarea Full Width -->
-          <textarea
-            v-model="newPost"
-            :placeholder="selectedBot?.greeting || 'แชร์ความรู้สึกของคุณ... ไม่ว่าจะเป็นความเครียด ความกังวล หรือสิ่งที่อยากระบาย 💭'"
-            :class="[
-              'w-full min-h-32 md:min-h-28 p-4 border-2 rounded-xl md:rounded-2xl focus:outline-none focus:ring-2 focus:border-transparent resize-none text-gray-900 placeholder-gray-400 text-base',
-              editingPostId
-                ? 'border-blue-300 focus:ring-blue-500'
-                : 'border-gray-200 focus:ring-pink-500'
-            ]"
-            maxlength="2500"
-          ></textarea>
-
-          <!-- Mood Selector - Wrap to Multiple Lines -->
-          <div class="flex flex-col gap-2">
-            <span class="text-sm font-medium text-gray-600">อารมณ์:</span>
+            <Icon name="lucide:smile" class="w-4 h-4 text-gray-400 flex-shrink-0" />
             <div class="flex flex-wrap gap-2">
               <button
                 v-for="mood in moods"
                 :key="mood.value"
                 @click="selectedMood = mood.value"
                 :class="[
-                  'px-4 py-2 rounded-full text-sm font-medium transition-all',
+                  'px-3 py-1.5 rounded-full text-xs font-medium transition-all',
                   selectedMood === mood.value
-                    ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-md scale-105'
-                    : 'bg-gray-100 text-gray-700 active:bg-gray-200'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 ]"
               >
                 {{ mood.emoji }} {{ mood.label }}
               </button>
             </div>
           </div>
-
-          <!-- Character Count & Post Button -->
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-2 md:gap-3">
-              <span :class="['text-xs md:text-sm font-medium', newPost.length > 2250 ? 'text-red-500' : 'text-gray-500']">
-                {{ newPost.length }}/2500
-              </span>
-              <div v-if="newPost.length > 0" class="hidden sm:flex items-center gap-2 text-xs md:text-sm text-gray-600">
-                <Icon name="lucide:lock" class="w-3 h-3 md:w-4 md:h-4" />
-                <span>โพสต์นิรนาม</span>
-              </div>
-            </div>
-            <button
-              @click="handlePost"
-              :disabled="!newPost.trim() || isPosting"
-              :class="[
-                'px-6 md:px-8 py-2.5 md:py-3 rounded-full font-semibold transition-all shadow-lg text-sm md:text-base',
-                !newPost.trim() || isPosting
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : editingPostId
-                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:shadow-xl active:scale-95'
-                    : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:shadow-xl active:scale-95'
-              ]"
-            >
-              <span v-if="isPosting" class="flex items-center gap-2">
-                <Icon name="lucide:loader-2" class="w-4 h-4 animate-spin" />
-                <span class="hidden sm:inline">{{ editingPostId ? 'กำลังบันทึก...' : 'กำลังโพสต์...' }}</span>
-              </span>
-              <span v-else>{{ editingPostId ? 'บันทึกการแก้ไข' : 'แชร์ความรู้สึก' }}</span>
-            </button>
-          </div>
         </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
+          <span :class="['text-xs', newPost.length > 2250 ? 'text-red-500' : 'text-gray-400']">
+            {{ newPost.length }}/2500
+          </span>
+          <button
+            @click="handlePost"
+            :disabled="!newPost.trim() || isPosting"
+            :class="[
+              'px-5 py-2 rounded-full text-sm font-medium transition-all',
+              !newPost.trim() || isPosting
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-900 text-white hover:bg-gray-800 active:scale-95'
+            ]"
+          >
+            <span v-if="isPosting" class="flex items-center gap-2">
+              <Icon name="lucide:loader-2" class="w-4 h-4 animate-spin" />
+              <span>{{ editingPostId ? 'บันทึก...' : 'โพสต์...' }}</span>
+            </span>
+            <span v-else>{{ editingPostId ? 'บันทึก' : 'โพสต์' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Section Title -->
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-medium text-gray-500">โพสต์ล่าสุด</h2>
       </div>
 
       <!-- Posts Feed -->
-      <div v-if="loading" class="text-center py-12">
-        <Icon name="lucide:loader-2" class="w-12 h-12 text-pink-500 animate-spin mx-auto mb-4" />
-        <p class="text-gray-500">กำลังโหลด...</p>
+      <div v-if="loading" class="text-center py-16">
+        <Icon name="lucide:loader-2" class="w-8 h-8 text-gray-400 animate-spin mx-auto" />
       </div>
 
       <div v-else-if="posts.length === 0" class="text-center py-16">
-        <div class="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-pink-100 to-purple-100 rounded-full mb-6">
-          <Icon name="lucide:inbox" class="w-12 h-12 text-pink-400" />
+        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Icon name="lucide:message-square" class="w-8 h-8 text-gray-400" />
         </div>
-        <h3 class="text-xl font-semibold text-gray-900 mb-2">ยังไม่มีโพสต์</h3>
-        <p class="text-gray-500">เป็นคนแรกที่แชร์ความรู้สึกของคุณ</p>
+        <p class="text-gray-500 text-sm">ยังไม่มีโพสต์</p>
+        <p class="text-gray-400 text-xs mt-1">เป็นคนแรกที่แชร์ความรู้สึก</p>
       </div>
 
-      <!-- Masonry Grid - Pinterest style -->
-      <div class="masonry-container">
+      <!-- Posts List -->
+      <div class="space-y-4">
         <TransitionGroup name="list">
           <div
             v-for="post in posts"
             :key="post.id"
-            class="masonry-item"
           >
             <VentCard
               :post="post"
@@ -215,11 +208,24 @@ const newPost = ref('')
 const isPosting = ref(false)
 const loading = ref(true)
 const selectedMood = ref('neutral')
+const selectedRoom = ref('')
 const userProfile = ref<{ photoURL?: string; displayName?: string; slug?: string } | null>(null)
 const showSuccessModal = ref(false)
 const editingPostId = ref<string | null>(null)
 const showDeleteConfirm = ref(false)
 const deletingPostId = ref<string | null>(null)
+
+// Rooms
+interface Room {
+  id: string
+  name: string
+  description?: string
+  icon: string
+  color: string
+  imageURL?: string
+  isActive: boolean
+}
+const rooms = ref<Room[]>([])
 
 interface VentPost {
   id: string
@@ -228,6 +234,10 @@ interface VentPost {
   authorInitial: string
   authorPhotoURL?: string | null
   mood: string
+  roomId?: string
+  roomName?: string
+  roomIcon?: string
+  roomColor?: string
   createdAt: any
   editedAt?: any
   likesCount: number
@@ -316,6 +326,7 @@ const handlePost = async () => {
   isPosting.value = true
   const postContent = newPost.value.trim()
   const postMood = selectedMood.value
+  const postRoomId = selectedRoom.value || null
 
   try {
     if (editingPostId.value) {
@@ -324,12 +335,14 @@ const handlePost = async () => {
       await updateDoc(postRef, {
         content: postContent,
         mood: postMood,
+        roomId: postRoomId,
         editedAt: serverTimestamp()
       })
 
       // Clear form
       newPost.value = ''
       selectedMood.value = 'neutral'
+      selectedRoom.value = rooms.value.length > 0 ? rooms.value[0].id : ''
       editingPostId.value = null
 
       // Show success modal
@@ -345,6 +358,7 @@ const handlePost = async () => {
         content: postContent,
         authorId: user.value.uid,
         mood: postMood,
+        roomId: postRoomId,
         createdAt: serverTimestamp(),
         likesCount: 0,
         commentsCount: 0,
@@ -355,6 +369,7 @@ const handlePost = async () => {
       // Clear form
       newPost.value = ''
       selectedMood.value = 'neutral'
+      selectedRoom.value = rooms.value.length > 0 ? rooms.value[0].id : ''
 
       // Show success modal
       showSuccessModal.value = true
@@ -437,6 +452,7 @@ const startEditPost = (postId: string) => {
   editingPostId.value = postId
   newPost.value = post.content
   selectedMood.value = post.mood
+  selectedRoom.value = post.roomId || (rooms.value.length > 0 ? rooms.value[0].id : '')
   post.showMenu = false
 
   // Scroll ไปที่ textarea
@@ -447,6 +463,7 @@ const cancelEdit = () => {
   editingPostId.value = null
   newPost.value = ''
   selectedMood.value = 'neutral'
+  selectedRoom.value = rooms.value.length > 0 ? rooms.value[0].id : ''
 }
 
 const confirmDeletePost = (postId: string) => {
@@ -539,10 +556,27 @@ const loadUserProfile = async () => {
   }
 }
 
+// Load rooms
+const loadRooms = async () => {
+  try {
+    const response = await $fetch<{ rooms: Room[] }>('/api/rooms')
+    rooms.value = response.rooms.filter(r => r.isActive)
+    // Select first room by default if none selected
+    if (rooms.value.length > 0 && !selectedRoom.value) {
+      selectedRoom.value = rooms.value[0].id
+    }
+  } catch (error) {
+    console.error('Error loading rooms:', error)
+  }
+}
+
 // Real-time data fetching
 onMounted(() => {
   // Load user profile
   loadUserProfile()
+
+  // Load rooms
+  loadRooms()
 
   // Initialize selected bot
   initializeSelectedBot()
@@ -578,6 +612,19 @@ onMounted(() => {
           console.error('Error loading user profile for post:', err)
         }
 
+        // Get room info if roomId exists
+        let roomName = ''
+        let roomIcon = ''
+        let roomColor = ''
+        if (data.roomId) {
+          const room = rooms.value.find(r => r.id === data.roomId)
+          if (room) {
+            roomName = room.name
+            roomIcon = room.icon
+            roomColor = room.color
+          }
+        }
+
         return {
           id: docSnapshot.id,
           content: data.content,
@@ -585,6 +632,10 @@ onMounted(() => {
           authorInitial,
           authorPhotoURL,
           mood: data.mood,
+          roomId: data.roomId || null,
+          roomName,
+          roomIcon,
+          roomColor,
           createdAt: data.createdAt,
           editedAt: data.editedAt,
           likesCount: data.likesCount || 0,
@@ -628,62 +679,20 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Masonry Layout - Pinterest Style */
-.masonry-container {
-  column-count: 1;
-  column-gap: 1.5rem;
-}
-
-@media (min-width: 768px) {
-  .masonry-container {
-    column-count: 2;
-  }
-}
-
-.masonry-item {
-  break-inside: avoid;
-  margin-bottom: 1.5rem;
-  display: inline-block;
-  width: 100%;
-}
-
+/* List Transitions */
 .list-enter-active,
 .list-leave-active {
-  transition: all 0.5s ease;
+  transition: all 0.3s ease;
 }
 
 .list-enter-from {
   opacity: 0;
-  transform: translateY(-30px);
+  transform: translateY(-10px);
 }
 
 .list-leave-to {
   opacity: 0;
-  transform: translateX(30px);
-}
-
-.slide-enter-active,
-.slide-leave-active {
-  transition: all 0.3s ease;
-  max-height: 1000px;
-  overflow: hidden;
-}
-
-.slide-enter-from,
-.slide-leave-to {
-  max-height: 0;
-  opacity: 0;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  transform: translateX(10px);
 }
 
 .animate-fadeIn {

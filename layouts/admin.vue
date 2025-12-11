@@ -120,6 +120,17 @@
           <span>จัดการโพสต์</span>
         </NuxtLink>
 
+        <!-- Rooms -->
+        <NuxtLink
+          to="/admin/rooms"
+          class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-purple-50 transition-colors text-gray-700"
+          active-class="bg-purple-100 text-purple-700 font-semibold"
+          @click="closeSidebar"
+        >
+          <Icon name="lucide:door-open" class="w-5 h-5" />
+          <span>จัดการห้อง</span>
+        </NuxtLink>
+
         <!-- Users -->
         <NuxtLink
           to="/admin/users"
@@ -184,6 +195,17 @@
         >
           <Icon name="lucide:image" class="w-5 h-5" />
           <span>จัดการ Hero Banner</span>
+        </NuxtLink>
+
+        <!-- Media Library -->
+        <NuxtLink
+          to="/admin/media"
+          class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-purple-50 transition-colors text-gray-700"
+          active-class="bg-purple-100 text-purple-700 font-semibold"
+          @click="closeSidebar"
+        >
+          <Icon name="lucide:folder-open" class="w-5 h-5" />
+          <span>Media Library</span>
         </NuxtLink>
 
         <!-- Divider -->

@@ -30,6 +30,39 @@
 
     <!-- Main content -->
     <main class="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
+      <!-- Room Filter -->
+      <div v-if="rooms.length > 0" class="mb-6">
+        <div class="flex flex-wrap gap-2">
+          <button
+            @click="selectRoom('')"
+            :class="[
+              'px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2',
+              !selectedRoom
+                ? 'bg-gray-900 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            ]"
+          >
+            <Icon name="lucide:layout-grid" class="w-4 h-4" />
+            ทั้งหมด
+          </button>
+          <button
+            v-for="room in rooms"
+            :key="room.id"
+            @click="selectRoom(room.id)"
+            :class="[
+              'px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2',
+              selectedRoom === room.id
+                ? 'text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            ]"
+            :style="selectedRoom === room.id ? { backgroundColor: room.color } : {}"
+          >
+            <Icon :name="room.icon" class="w-4 h-4" />
+            {{ room.name }}
+          </button>
+        </div>
+      </div>
+
       <!-- Loading state -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-20">
         <Icon name="lucide:loader-2" class="w-10 h-10 text-gray-400 animate-spin mb-4" />
@@ -92,6 +125,16 @@ useHead({
 
 const { user } = useAuth()
 
+interface Room {
+  id: string
+  name: string
+  description?: string
+  icon: string
+  color: string
+  imageURL?: string
+  isActive: boolean
+}
+
 interface VentPost {
   id: string
   content: string
@@ -101,17 +144,40 @@ interface VentPost {
   authorPhoto?: string | null
   userId: string
   moodCategory?: string
+  roomId?: string
+  roomName?: string
+  roomIcon?: string
+  roomColor?: string
   likeCount?: number
   commentCount?: number
   viewCount?: number
   createdAt: Date
 }
 
+const rooms = ref<Room[]>([])
+const selectedRoom = ref('')
 const posts = ref<VentPost[]>([])
 const loading = ref(true)
 const loadingMore = ref(false)
 const hasMore = ref(true)
 const lastTimestamp = ref<string>('')
+
+// Load rooms
+const loadRooms = async () => {
+  try {
+    const response = await $fetch<{ rooms: Room[] }>('/api/rooms')
+    rooms.value = response.rooms.filter(r => r.isActive)
+  } catch (error) {
+    console.error('Error loading rooms:', error)
+  }
+}
+
+// Select room and reload posts
+const selectRoom = (roomId: string) => {
+  selectedRoom.value = roomId
+  lastTimestamp.value = ''
+  loadPosts()
+}
 
 // Load posts from API
 const loadPosts = async (loadMoreMode = false) => {
@@ -130,24 +196,49 @@ const loadPosts = async (loadMoreMode = false) => {
       params.startAfter = lastTimestamp.value
     }
 
+    // Add room filter
+    if (selectedRoom.value) {
+      params.roomId = selectedRoom.value
+    }
+
     const response = await $fetch<{ vents: any[]; hasMore: boolean }>('/api/vents', {
       params
     })
 
-    const newPosts = response.vents.map((data: any) => ({
-      id: data.id,
-      userId: data.userId,
-      authorName: data.authorName || 'ไม่ระบุชื่อ',
-      authorSlug: data.authorSlug,
-      authorPhoto: data.authorPhoto,
-      content: data.content,
-      excerpt: data.excerpt || data.content?.replace(/<[^>]*>/g, '').substring(0, 150),
-      moodCategory: data.moodCategory || 'normal',
-      likeCount: typeof data.likeCount === 'number' ? data.likeCount : 0,
-      commentCount: typeof data.commentCount === 'number' ? data.commentCount : 0,
-      viewCount: typeof data.viewCount === 'number' ? data.viewCount : 0,
-      createdAt: new Date(data.createdAt)
-    }))
+    // Get room info for each post
+    const newPosts = response.vents.map((data: any) => {
+      // Find room info if roomId exists
+      let roomName = ''
+      let roomIcon = ''
+      let roomColor = ''
+      if (data.roomId) {
+        const room = rooms.value.find(r => r.id === data.roomId)
+        if (room) {
+          roomName = room.name
+          roomIcon = room.icon
+          roomColor = room.color
+        }
+      }
+
+      return {
+        id: data.id,
+        userId: data.userId,
+        authorName: data.authorName || 'ไม่ระบุชื่อ',
+        authorSlug: data.authorSlug,
+        authorPhoto: data.authorPhoto,
+        content: data.content,
+        excerpt: data.excerpt || data.content?.replace(/<[^>]*>/g, '').substring(0, 150),
+        moodCategory: data.moodCategory || 'normal',
+        roomId: data.roomId,
+        roomName,
+        roomIcon,
+        roomColor,
+        likeCount: typeof data.likeCount === 'number' ? data.likeCount : 0,
+        commentCount: typeof data.commentCount === 'number' ? data.commentCount : 0,
+        viewCount: typeof data.viewCount === 'number' ? data.viewCount : 0,
+        createdAt: new Date(data.createdAt)
+      }
+    })
 
     if (loadMoreMode) {
       posts.value = [...posts.value, ...newPosts]
@@ -178,8 +269,8 @@ const handleShareProblem = () => {
     navigateTo('/login')
     return
   }
-  // Redirect to my-story page
-  navigateTo('/my-story')
+  // Redirect to my-problem page
+  navigateTo('/my-problem')
 }
 
 // Load more posts
@@ -187,12 +278,14 @@ const loadMore = () => {
   loadPosts(true)
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await loadRooms()
   loadPosts()
 })
 
 // Reload data when navigating back to this page
-onActivated(() => {
+onActivated(async () => {
+  await loadRooms()
   loadPosts()
 })
 </script>
