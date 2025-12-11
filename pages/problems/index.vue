@@ -10,9 +10,20 @@
           <span class="text-gray-900 font-medium">เรื่องราวทั้งหมด</span>
         </nav>
 
-        <div>
-          <h1 class="text-xl md:text-2xl font-semibold text-gray-900">ปัญหาที่ได้รับการระบาย</h1>
-          <p class="text-xs md:text-sm text-gray-500 mt-1">บันทึกการระบายความรู้สึกทั้งหมดจากผู้ใช้ในชุมชน</p>
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-xl md:text-2xl font-semibold text-gray-900">ปัญหาที่ได้รับการระบาย</h1>
+            <p class="text-xs md:text-sm text-gray-500 mt-1">บันทึกการระบายความรู้สึกทั้งหมดจากผู้ใช้ในชุมชน</p>
+          </div>
+
+          <!-- Share Problem Button -->
+          <button
+            @click="handleShareProblem"
+            class="flex items-center gap-2 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-medium transition-all hover:shadow-lg"
+          >
+            <Icon name="lucide:plus" class="w-5 h-5" />
+            <span class="hidden md:inline">แชร์ปัญหา</span>
+          </button>
         </div>
       </div>
     </header>
@@ -20,42 +31,29 @@
     <!-- Main content -->
     <main class="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
       <!-- Loading state -->
-      <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div
-          v-for="i in 9"
-          :key="i"
-          class="bg-white rounded-2xl p-6 animate-pulse"
-        >
-          <div class="flex items-start gap-3 mb-4">
-            <div class="w-12 h-12 rounded-full bg-gray-200" />
-            <div class="flex-1">
-              <div class="h-3 w-24 bg-gray-200 rounded mb-2" />
-              <div class="h-2 w-16 bg-gray-200 rounded" />
-            </div>
-            <div class="w-12 h-6 bg-gray-200 rounded-full" />
-          </div>
-          <div class="h-2 w-full bg-gray-200 rounded mb-2" />
-          <div class="h-2 w-3/4 bg-gray-200 rounded mb-2" />
-          <div class="h-2 w-1/2 bg-gray-200 rounded" />
-        </div>
+      <div v-if="loading" class="flex flex-col items-center justify-center py-20">
+        <Icon name="lucide:loader-2" class="w-10 h-10 text-gray-400 animate-spin mb-4" />
+        <p class="text-sm text-gray-500">กำลังโหลดข้อมูล...</p>
       </div>
 
       <!-- Posts grid -->
-      <div
-        v-else-if="posts.length > 0"
-        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-      >
-        <VentCard
-          v-for="post in posts"
-          :key="post.id"
-          :post="post"
-          variant="compact"
-        />
-      </div>
+      <Transition name="fade-in">
+        <div
+          v-if="!loading && posts.length > 0"
+          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
+          <VentCard
+            v-for="post in posts"
+            :key="post.id"
+            :post="post"
+            variant="compact"
+          />
+        </div>
+      </Transition>
 
       <!-- Empty state -->
       <div
-        v-else
+        v-if="!loading && posts.length === 0"
         class="text-center py-20"
       >
         <Icon name="lucide:file-text" class="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -82,6 +80,8 @@
 </template>
 
 <script setup lang="ts">
+import { useAuth } from '~/composables/useAuth'
+
 definePageMeta({
   layout: 'default'
 })
@@ -89,6 +89,8 @@ definePageMeta({
 useHead({
   title: 'เรื่องราวทั้งหมด - Nira'
 })
+
+const { user } = useAuth()
 
 interface VentPost {
   id: string
@@ -169,6 +171,17 @@ const loadPosts = async (loadMoreMode = false) => {
   }
 }
 
+// Handle share problem button click
+const handleShareProblem = () => {
+  if (!user.value) {
+    // Redirect to login if not authenticated
+    navigateTo('/login')
+    return
+  }
+  // Redirect to my-story page
+  navigateTo('/my-story')
+}
+
 // Load more posts
 const loadMore = () => {
   loadPosts(true)
@@ -185,5 +198,18 @@ onActivated(() => {
 </script>
 
 <style scoped>
-/* Add any custom styles here */
+/* Fade-in transition for content */
+.fade-in-enter-active {
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-in-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.fade-in-enter-to {
+  opacity: 1;
+  transform: translateY(0);
+}
 </style>

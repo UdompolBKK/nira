@@ -92,7 +92,7 @@ export default defineEventHandler(async (event) => {
           }
         ],
         temperature: 0.7,
-        max_tokens: 300
+        max_tokens: 800
       })
     })
 

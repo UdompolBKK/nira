@@ -17,7 +17,15 @@
         </div>
       </div>
       <div class="flex-1 min-w-0">
-        <p class="font-medium text-gray-900 truncate">{{ post.authorName }}</p>
+        <NuxtLink
+          v-if="post.authorSlug"
+          :to="`/users/${post.authorSlug}`"
+          @click.stop
+          class="font-medium text-gray-900 truncate hover:text-blue-600 transition-colors block"
+        >
+          {{ post.authorName }}
+        </NuxtLink>
+        <p v-else class="font-medium text-gray-900 truncate">{{ post.authorName }}</p>
         <p class="text-sm text-gray-500">{{ formatDate(post.createdAt) }}</p>
       </div>
       <div v-if="post.moodCategory" class="flex-shrink-0">

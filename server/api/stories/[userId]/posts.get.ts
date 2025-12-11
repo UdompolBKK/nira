@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
 
     // Get user's public posts
     const postsSnapshot = await db
-      .collection('posts')
+      .collection('storyPosts')
       .where('userId', '==', userId)
       .where('visibility', '==', 'public')
       .orderBy('createdAt', 'asc')

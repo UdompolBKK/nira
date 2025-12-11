@@ -392,16 +392,13 @@ const toggleLike = async (postId: string) => {
       })
 
       // สร้างการแจ้งเตือนให้เจ้าของโพสต์ (ถ้าไม่ใช่ตัวเอง)
+      // Relational Model: Store only UID, name/photo fetched dynamically from users collection
       if (post.authorId !== user.value.uid) {
         await createNotification({
           userId: post.authorId,
           type: 'like',
-          title: 'มีคนกดใจโพสต์ของคุณ',
-          message: `${displayName.value} กดใจโพสต์: "${post.content.substring(0, 50)}${post.content.length > 50 ? '...' : ''}"`,
           actionUrl: '/my-problem',
-          fromUserId: user.value.uid,
-          fromUserName: displayName.value,
-          fromUserPhoto: userProfile.value?.photoURL,
+          senderId: user.value.uid, // Only store UID
           postId: postId
         })
       }
@@ -503,16 +500,13 @@ const addComment = async (postId: string) => {
     })
 
     // สร้างการแจ้งเตือนให้เจ้าของโพสต์ (ถ้าไม่ใช่ตัวเอง)
+    // Relational Model: Store only UID, name/photo fetched dynamically from users collection
     if (post.authorId !== user.value.uid) {
       await createNotification({
         userId: post.authorId,
         type: 'comment',
-        title: 'มีคนแสดงความคิดเห็นในโพสต์ของคุณ',
-        message: `${displayName.value}: "${commentContent.substring(0, 50)}${commentContent.length > 50 ? '...' : ''}"`,
         actionUrl: '/my-problem',
-        fromUserId: user.value.uid,
-        fromUserName: displayName.value,
-        fromUserPhoto: userProfile.value?.photoURL,
+        senderId: user.value.uid, // Only store UID
         postId: postId
       })
     }

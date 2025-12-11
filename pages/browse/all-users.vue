@@ -234,7 +234,7 @@ const loadActiveUsers = async () => {
   loading.value = true
   try {
     // Get recent posts (last 100 to get more comprehensive data)
-    const postsRef = collection(firestore, 'posts')
+    const postsRef = collection(firestore, 'storyPosts')
     const q = query(
       postsRef,
       where('visibility', '==', 'public'),

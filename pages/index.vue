@@ -201,6 +201,18 @@ useHead({
   ]
 })
 
+// Check if user needs to verify email
+const { user } = useAuth()
+watchEffect(() => {
+  if (user.value) {
+    // Check if user logged in with email/password (not Google)
+    const isGoogleUser = user.value.providerData?.some(p => p.providerId === 'google.com')
+    if (!isGoogleUser && !user.value.emailVerified) {
+      navigateTo('/verify-email')
+    }
+  }
+})
+
 // Hero Images - Fetched from Firebase
 const heroImages = ref<string[]>([])
 const currentImage = ref(0)

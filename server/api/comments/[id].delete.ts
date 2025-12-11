@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
     await commentRef.delete()
 
     // Update comment count on post
-    await db.collection('posts').doc(postId).update({
+    await db.collection('storyPosts').doc(postId).update({
       commentCount: FieldValue.increment(-1)
     })
 

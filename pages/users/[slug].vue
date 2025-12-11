@@ -60,7 +60,12 @@
               <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
                 {{ userProfile.displayName || 'ผู้ใช้นิรนาม' }}
               </h1>
-              <p class="text-gray-500 mb-4">@{{ userProfile.slug }}</p>
+              <p class="text-gray-500 mb-3">@{{ userProfile.slug }}</p>
+
+              <!-- About Me -->
+              <p v-if="userProfile.aboutMe" class="text-gray-600 text-sm mb-4 max-w-md">
+                {{ userProfile.aboutMe }}
+              </p>
 
               <!-- Stats -->
               <div class="flex items-center justify-center md:justify-start gap-6 mb-4">
@@ -75,15 +80,40 @@
               </div>
 
               <!-- Add Friend Button -->
-              <button
-                v-if="canAddFriend"
-                @click="handleAddFriend"
-                :disabled="friendRequestPending"
-                class="px-6 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto md:mx-0"
-              >
-                <Icon :name="friendRequestPending ? 'lucide:clock' : 'lucide:user-plus'" class="w-4 h-4" />
-                {{ friendRequestPending ? 'รอการตอบรับ' : 'เพิ่มเพื่อน' }}
-              </button>
+              <div v-if="canAddFriend">
+                <button
+                  v-if="friendStatus === 'none'"
+                  @click="sendFriendRequest"
+                  :disabled="sendingRequest"
+                  class="px-6 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto md:mx-0"
+                >
+                  <Icon v-if="sendingRequest" name="lucide:loader-2" class="w-4 h-4 animate-spin" />
+                  <Icon v-else name="lucide:user-plus" class="w-4 h-4" />
+                  {{ sendingRequest ? 'กำลังส่ง...' : 'เพิ่มเพื่อน' }}
+                </button>
+
+                <button
+                  v-else-if="friendStatus === 'pending'"
+                  @click="cancelFriendRequest"
+                  :disabled="sendingRequest"
+                  class="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto md:mx-0"
+                >
+                  <Icon v-if="sendingRequest" name="lucide:loader-2" class="w-4 h-4 animate-spin" />
+                  <Icon v-else name="lucide:user-x" class="w-4 h-4" />
+                  {{ sendingRequest ? 'กำลังยกเลิก...' : 'ยกเลิกคำขอ' }}
+                </button>
+
+                <button
+                  v-else-if="friendStatus === 'friends'"
+                  @click="unfriend"
+                  :disabled="sendingRequest"
+                  class="px-6 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto md:mx-0"
+                >
+                  <Icon v-if="sendingRequest" name="lucide:loader-2" class="w-4 h-4 animate-spin" />
+                  <Icon v-else name="lucide:user-minus" class="w-4 h-4" />
+                  {{ sendingRequest ? 'กำลังลบ...' : 'ลบเพื่อน' }}
+                </button>
+              </div>
               <div v-else-if="!user" class="text-sm text-gray-500">
                 <NuxtLink to="/login" class="text-blue-600 hover:underline">เข้าสู่ระบบ</NuxtLink> เพื่อเพิ่มเพื่อน
               </div>
@@ -148,34 +178,47 @@
           </div>
 
           <!-- Stories Timeline -->
-          <div v-else class="relative pl-10">
-            <div class="absolute left-2 top-0 bottom-0 w-px bg-gray-200" />
-            <div
-              v-for="story in stories"
-              :key="story.id"
-              class="relative mb-6"
-            >
-              <div class="absolute left-1 top-2 w-2 h-2 rounded-full bg-gray-300 ring-2 ring-white" style="margin-left: -39px;" />
+          <div v-else>
+            <div class="relative pl-10">
+              <div class="absolute left-2 top-0 bottom-0 w-px bg-gray-200" />
+              <div
+                v-for="story in stories.slice(0, 3)"
+                :key="story.id"
+                class="relative mb-6"
+              >
+                <div class="absolute left-1 top-2 w-2 h-2 rounded-full bg-gray-300 ring-2 ring-white" style="margin-left: -39px;" />
 
-              <!-- Locked Post -->
-              <div v-if="story.isLocked" class="relative">
-                <div class="text-gray-800 leading-relaxed prose prose-sm max-w-none blur-sm select-none pointer-events-none">
-                  {{ generateFakeText(story.contentLength || 300) }}
-                </div>
-                <div class="absolute inset-0 flex items-center justify-center bg-white/40">
-                  <div class="text-center p-4 bg-white/80 rounded-lg shadow-md border border-gray-300">
-                    <Icon name="lucide:lock" class="w-8 h-8 text-gray-600 mx-auto mb-2" />
-                    <p class="text-sm text-gray-700 font-semibold">เนื้อหาถูกล็อค</p>
-                    <p class="text-xs text-gray-500 mt-1">เพิ่มเพื่อนเพื่ออ่านเนื้อหานี้</p>
+                <!-- Locked Post -->
+                <div v-if="story.isLocked" class="relative">
+                  <div class="text-gray-800 leading-relaxed prose prose-sm max-w-none blur-sm select-none pointer-events-none">
+                    {{ generateFakeText(story.contentLength || 300) }}
+                  </div>
+                  <div class="absolute inset-0 flex items-center justify-center bg-white/40">
+                    <div class="text-center p-4 bg-white/80 rounded-lg shadow-md border border-gray-300">
+                      <Icon name="lucide:lock" class="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                      <p class="text-sm text-gray-700 font-semibold">เนื้อหาถูกล็อค</p>
+                      <p class="text-xs text-gray-500 mt-1">เพิ่มเพื่อนเพื่ออ่านเนื้อหานี้</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <!-- Normal Post -->
-              <div v-else>
-                <div class="text-gray-800 leading-relaxed prose prose-sm max-w-none" v-html="story.content" />
-                <p class="text-xs text-gray-400 mt-3">{{ formatDate(story.createdAt) }}</p>
+                <!-- Normal Post -->
+                <div v-else>
+                  <div class="text-gray-800 leading-relaxed prose prose-sm max-w-none" v-html="story.content" />
+                  <p class="text-xs text-gray-400 mt-3">{{ formatDate(story.createdAt) }}</p>
+                </div>
               </div>
+            </div>
+
+            <!-- View More Button -->
+            <div v-if="stories.length > 3" class="text-center mt-8">
+              <NuxtLink
+                :to="`/stories/${userProfile?.slug}`"
+                class="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
+              >
+                <span>ดูเพิ่มเติม</span>
+                <Icon name="lucide:arrow-right" class="w-4 h-4" />
+              </NuxtLink>
             </div>
           </div>
         </div>
@@ -207,13 +250,50 @@
         </div>
       </main>
     </div>
+
+    <!-- Success Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="showSuccessModal"
+          class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4"
+          @click="showSuccessModal = false"
+        >
+          <div
+            class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl transform"
+            @click.stop
+          >
+            <!-- Success Icon -->
+            <div class="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Icon name="lucide:check" class="w-8 h-8 text-white" />
+            </div>
+
+            <!-- Message -->
+            <h3 class="text-2xl font-bold text-gray-900 mb-2 text-center">ส่งคำขอเรียบร้อย!</h3>
+            <p class="text-gray-600 text-center mb-6">
+              คุณได้ส่งคำขอเป็นเพื่อนกับ
+              <span class="font-semibold text-gray-900">{{ userProfile?.displayName }}</span>
+              แล้ว
+            </p>
+
+            <!-- Close Button -->
+            <button
+              @click="showSuccessModal = false"
+              class="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-semibold hover:shadow-lg transition-all"
+            >
+              เข้าใจแล้ว
+            </button>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useAuth } from '~/composables/useAuth'
 import { useFirestore } from '~/composables/useFirestore'
-import { collection, query, where, getDocs, orderBy, limit, doc, getDoc } from 'firebase/firestore'
+import { collection, query, where, getDocs, orderBy, limit, doc, getDoc, addDoc, deleteDoc } from 'firebase/firestore'
 
 definePageMeta({
   layout: 'default'
@@ -235,7 +315,10 @@ const loadingProblems = ref(false)
 const storiesCount = ref(0)
 const problemsCount = ref(0)
 
-const friendRequestPending = ref(false)
+const friendStatus = ref<'none' | 'pending' | 'friends'>('none')
+const sendingRequest = ref(false)
+const showSuccessModal = ref(false)
+const friendRequestId = ref<string | null>(null)
 
 const getInitial = (name?: string) => {
   if (!name) return 'U'
@@ -246,10 +329,131 @@ const canAddFriend = computed(() => {
   return user.value && user.value.uid !== userProfile.value?.userId
 })
 
-const handleAddFriend = () => {
-  // TODO: Implement friend request functionality
-  friendRequestPending.value = true
+// Check friend status using API
+const checkFriendStatus = async () => {
+  if (!user.value || !userProfile.value) return
+
+  try {
+    const firebaseUser = user.value._firebaseUser
+    if (!firebaseUser) return
+
+    const token = await firebaseUser.getIdToken()
+
+    const response = await $fetch(`/api/friends/status?targetUserId=${userProfile.value.userId}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+    if (response.success) {
+      friendStatus.value = response.status
+      if (response.requestId) {
+        friendRequestId.value = response.requestId
+      }
+    }
+  } catch (err) {
+    console.error('Error checking friend status:', err)
+  }
 }
+
+// Send friend request using API
+const sendFriendRequest = async () => {
+  if (!user.value || !userProfile.value) return
+
+  sendingRequest.value = true
+  try {
+    const firebaseUser = user.value._firebaseUser
+    if (!firebaseUser) return
+
+    const token = await firebaseUser.getIdToken()
+
+    const response = await $fetch('/api/friends/send', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: {
+        receiverId: userProfile.value.userId,
+        receiverName: userProfile.value.displayName || 'ผู้ใช้'
+      }
+    })
+
+    if (response.success) {
+      friendRequestId.value = response.requestId
+      friendStatus.value = 'pending'
+      showSuccessModal.value = true
+    }
+  } catch (err) {
+    console.error('Error sending friend request:', err)
+    alert('เกิดข้อผิดพลาดในการส่งคำขอ')
+  } finally {
+    sendingRequest.value = false
+  }
+}
+
+// Cancel friend request using API
+const cancelFriendRequest = async () => {
+  if (!user.value || !friendRequestId.value) return
+
+  sendingRequest.value = true
+  try {
+    const firebaseUser = user.value._firebaseUser
+    if (!firebaseUser) return
+
+    const token = await firebaseUser.getIdToken()
+
+    await $fetch('/api/friends/cancel', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: {
+        requestId: friendRequestId.value
+      }
+    })
+
+    friendStatus.value = 'none'
+    friendRequestId.value = null
+  } catch (err) {
+    console.error('Error canceling friend request:', err)
+    alert('เกิดข้อผิดพลาดในการยกเลิกคำขอ')
+  } finally {
+    sendingRequest.value = false
+  }
+}
+
+// Unfriend using API
+const unfriend = async () => {
+  if (!user.value || !userProfile.value) return
+  if (!confirm(`คุณต้องการลบ ${userProfile.value.displayName} ออกจากเพื่อนหรือไม่?`)) return
+
+  sendingRequest.value = true
+  try {
+    const firebaseUser = user.value._firebaseUser
+    if (!firebaseUser) return
+
+    const token = await firebaseUser.getIdToken()
+
+    await $fetch('/api/friends/unfriend', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: {
+        friendId: userProfile.value.userId
+      }
+    })
+
+    friendStatus.value = 'none'
+  } catch (err) {
+    console.error('Error unfriending:', err)
+    alert('เกิดข้อผิดพลาดในการลบเพื่อน')
+  } finally {
+    sendingRequest.value = false
+  }
+}
+
 
 const generateFakeText = (length: number) => {
   const words = ['วันนี้', 'ฉัน', 'รู้สึก', 'มีความสุข', 'เศร้า', 'คิดถึง', 'อยาก', 'ไป', 'มา', 'กับ', 'และ', 'แต่', 'หรือ']
@@ -349,7 +553,7 @@ const loadStories = async () => {
       postsRef,
       where('userId', '==', userProfile.value.userId),
       where('visibility', '==', 'public'),
-      orderBy('createdAt', 'desc'),
+      orderBy('createdAt', 'asc'), // Sort from oldest to newest (chronological autobiography)
       limit(50)
     )
     const snapshot = await getDocs(q)
@@ -432,6 +636,7 @@ watch(activeTab, (newTab) => {
 
 onMounted(async () => {
   await loadUserProfile()
+  await checkFriendStatus()
   // Load initial tab content
   if (activeTab.value === 'stories') {
     await loadStories()
@@ -444,5 +649,27 @@ onMounted(async () => {
 <style scoped>
 .prose {
   max-width: none;
+}
+
+/* Modal transition */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-enter-active > div,
+.modal-leave-active > div {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-from > div,
+.modal-leave-to > div {
+  transform: scale(0.9);
+  opacity: 0;
 }
 </style>

@@ -47,7 +47,7 @@
                 {{ post.authorInitial }}
               </div>
               <div class="flex-1 min-w-0">
-                <p class="font-semibold text-gray-900">{{ post.authorName }}</p>
+                <p class="font-semibold text-gray-900">ผู้ใช้นิรนาม</p>
                 <div class="flex items-center gap-2 text-sm text-gray-500">
                   <span>{{ formatTime(post.createdAt) }}</span>
                   <span v-if="post.editedAt" class="text-gray-400">• แก้ไข</span>
@@ -227,10 +227,8 @@ interface VentPost {
   id: string
   content: string
   authorId: string
-  authorName: string
   authorInitial: string
   authorPhotoURL?: string | null
-  isAnonymous: boolean
   mood: string
   createdAt: any
   editedAt?: any
@@ -335,16 +333,13 @@ const toggleLike = async () => {
       })
 
       // สร้างการแจ้งเตือนให้เจ้าของโพสต์ (ถ้าไม่ใช่ตัวเอง)
+      // Relational Model: Store only UID, name/photo fetched dynamically from users collection
       if (post.value.authorId !== user.value.uid) {
         await createNotification({
           userId: post.value.authorId,
           type: 'like',
-          title: 'มีคนกดใจโพสต์ของคุณ',
-          message: `${displayName.value} กดใจโพสต์ของคุณ`,
           actionUrl: `/my-problem/${post.value.id}`,
-          fromUserId: user.value.uid,
-          fromUserName: displayName.value,
-          fromUserPhoto: userProfile.value?.photoURL,
+          senderId: user.value.uid, // Only store UID
           postId: post.value.id
         })
       }
@@ -377,16 +372,13 @@ const addComment = async () => {
     })
 
     // สร้างการแจ้งเตือนให้เจ้าของโพสต์ (ถ้าไม่ใช่ตัวเอง)
+    // Relational Model: Store only UID, name/photo fetched dynamically from users collection
     if (post.value.authorId !== user.value.uid) {
       await createNotification({
         userId: post.value.authorId,
         type: 'comment',
-        title: 'มีคนแสดงความคิดเห็นในโพสต์ของคุณ',
-        message: `${displayName.value}: "${commentContent.substring(0, 50)}${commentContent.length > 50 ? '...' : ''}"`,
         actionUrl: `/my-problem/${post.value.id}`,
-        fromUserId: user.value.uid,
-        fromUserName: displayName.value,
-        fromUserPhoto: userProfile.value?.photoURL,
+        senderId: user.value.uid, // Only store UID
         postId: post.value.id
       })
     }
@@ -444,7 +436,6 @@ onMounted(async () => {
       const data = postSnap.data()
 
       // ดึง profile ของผู้เขียน
-      let authorName = 'ผู้ใช้นิรนาม'
       let authorInitial = 'U'
       let authorPhotoURL = null
 
@@ -452,7 +443,7 @@ onMounted(async () => {
         const userDoc = await getDoc(doc(firestore, 'users', data.authorId))
         if (userDoc.exists()) {
           const userData = userDoc.data()
-          authorName = userData.displayName || userData.slug || 'ผู้ใช้นิรนาม'
+          const authorName = userData.displayName || userData.slug || 'ผู้ใช้นิรนาม'
           authorInitial = authorName.charAt(0).toUpperCase()
           authorPhotoURL = userData.photoURL || null
         }
@@ -462,10 +453,17 @@ onMounted(async () => {
 
       post.value = {
         id: postSnap.id,
-        ...data,
-        authorName,
+        content: data.content,
+        authorId: data.authorId,
         authorInitial,
         authorPhotoURL,
+        mood: data.mood,
+        createdAt: data.createdAt,
+        editedAt: data.editedAt,
+        likesCount: data.likesCount || 0,
+        commentsCount: data.commentsCount || 0,
+        viewCount: data.viewCount || 0,
+        likes: data.likes || [],
         isLiked: data.likes?.includes(user.value?.uid)
       } as VentPost
 

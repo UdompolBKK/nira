@@ -16,15 +16,10 @@ export default defineEventHandler(async (event) => {
   try {
     const db = adminFirestore()
 
-    // Get user profile for author info
-    const userDoc = await db.collection('users').doc(authUser.uid).get()
-    const userData = userDoc.data()
-
+    // Relational Model: Store only userId, fetch user data dynamically from users collection
     const commentData = {
       postId,
       userId: authUser.uid,
-      authorName: userData?.displayName || 'ไม่ระบุชื่อ',
-      authorPhoto: userData?.photoURL || null,
       content: content.trim(),
       isPriority: false,
       createdAt: FieldValue.serverTimestamp(),
@@ -34,9 +29,13 @@ export default defineEventHandler(async (event) => {
     const docRef = await db.collection('comments').add(commentData)
 
     // Update comment count on post
-    await db.collection('posts').doc(postId).update({
+    await db.collection('storyPosts').doc(postId).update({
       commentCount: FieldValue.increment(1)
     })
+
+    // Fetch user data dynamically for response (relational model)
+    const userDoc = await db.collection('users').doc(authUser.uid).get()
+    const userData = userDoc.data()
 
     return {
       success: true,
@@ -44,6 +43,8 @@ export default defineEventHandler(async (event) => {
       comment: {
         id: docRef.id,
         ...commentData,
+        authorName: userData?.displayName || 'ไม่ระบุชื่อ',
+        authorPhoto: userData?.photoURL || null,
         createdAt: new Date(),
         updatedAt: new Date()
       }

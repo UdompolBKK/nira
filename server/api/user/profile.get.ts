@@ -31,6 +31,7 @@ export default defineEventHandler(async (event) => {
       profile: {
         displayName: data?.displayName || null,
         slug: data?.slug || null,
+        aboutMe: data?.aboutMe || null,
         photoURL: data?.photoURL || null,
         updatedAt: data?.updatedAt?.toDate?.() || null
       },

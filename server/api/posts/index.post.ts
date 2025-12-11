@@ -16,13 +16,9 @@ export default defineEventHandler(async (event) => {
   try {
     const db = adminFirestore()
 
-    // Get user profile for author info
-    const userDoc = await db.collection('users').doc(user.uid).get()
-    const userData = userDoc.data()
-
+    // Only store userId, not author details (fetch from users collection when displaying)
     const postData: Record<string, any> = {
       userId: user.uid,
-      authorName: userData?.displayName || 'ไม่ระบุชื่อ',
       content,
       excerpt: content.replace(/<[^>]*>/g, '').substring(0, 150),
       visibility: visibility || 'public',
@@ -38,10 +34,7 @@ export default defineEventHandler(async (event) => {
       updatedAt: FieldValue.serverTimestamp()
     }
 
-    if (userData?.slug) postData.authorSlug = userData.slug
-    if (userData?.photoURL) postData.authorPhoto = userData.photoURL
-
-    const docRef = await db.collection('posts').add(postData)
+    const docRef = await db.collection('storyPosts').add(postData)
 
     return {
       success: true,

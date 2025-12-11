@@ -4,24 +4,51 @@
     <div class="p-6 pb-4">
       <div class="flex items-start gap-4">
         <!-- Avatar -->
-        <img
-          v-if="post.authorPhotoURL"
-          :src="post.authorPhotoURL"
-          :alt="post.authorName"
-          class="w-12 h-12 rounded-full object-cover flex-shrink-0 shadow-md border-2 border-pink-200"
-        />
-        <div
-          v-else
-          class="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md"
+        <NuxtLink
+          v-if="post.authorSlug"
+          :to="`/users/${post.authorSlug}`"
+          class="flex-shrink-0"
         >
-          {{ post.authorInitial }}
-        </div>
+          <img
+            v-if="post.authorPhotoURL"
+            :src="post.authorPhotoURL"
+            :alt="post.authorName"
+            class="w-12 h-12 rounded-full object-cover shadow-md border-2 border-pink-200 hover:border-pink-300 transition-all"
+          />
+          <div
+            v-else
+            class="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold shadow-md hover:shadow-lg transition-all"
+          >
+            {{ post.authorInitial }}
+          </div>
+        </NuxtLink>
+        <template v-else>
+          <img
+            v-if="post.authorPhotoURL"
+            :src="post.authorPhotoURL"
+            :alt="post.authorName"
+            class="w-12 h-12 rounded-full object-cover flex-shrink-0 shadow-md border-2 border-pink-200"
+          />
+          <div
+            v-else
+            class="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md"
+          >
+            {{ post.authorInitial }}
+          </div>
+        </template>
 
         <div class="flex-1 min-w-0">
           <!-- Author & Time -->
           <div class="flex items-center justify-between mb-2">
             <div class="flex-1">
-              <h3 class="font-semibold text-gray-900">{{ post.authorName }}</h3>
+              <NuxtLink
+                v-if="post.authorSlug"
+                :to="`/users/${post.authorSlug}`"
+                class="font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+              >
+                {{ post.authorName }}
+              </NuxtLink>
+              <h3 v-else class="font-semibold text-gray-900">{{ post.authorName }}</h3>
               <p class="text-xs text-gray-500">
                 {{ formatDate(post.createdAt) }}
                 <span v-if="post.editedAt" class="text-gray-400">
@@ -163,6 +190,7 @@ interface VentPost {
   content: string
   authorId: string
   authorName: string
+  authorSlug?: string
   authorInitial: string
   authorPhotoURL?: string | null
   mood: string

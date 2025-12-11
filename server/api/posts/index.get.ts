@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
 
   try {
     const db = adminFirestore()
-    let postsQuery = db.collection('posts')
+    let postsQuery = db.collection('storyPosts')
       .where('visibility', '==', 'public')
 
     // Filter by postType if provided
@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
 
     const snapshot = await postsQuery.get()
 
-    // Fetch user profiles for anonymous names
+    // Fetch user profiles (displayName, slug, photoURL from users collection)
     const userIds = [...new Set(snapshot.docs.map(doc => doc.data().userId).filter(Boolean))]
     const userProfiles = new Map()
 
@@ -46,14 +46,15 @@ export default defineEventHandler(async (event) => {
           if (profileDoc.exists) {
             const profileData = profileDoc.data()
             return [userId, {
-              anonymousName: profileData?.anonymousName || 'ไม่ระบุชื่อ',
-              authorPhoto: profileData?.photoURL || null
+              displayName: profileData?.displayName || profileData?.slug || 'ไม่ระบุชื่อ',
+              slug: profileData?.slug || null,
+              photoURL: profileData?.photoURL || null
             }]
           }
         } catch (err) {
           console.error(`Error fetching profile for user ${userId}:`, err)
         }
-        return [userId, { anonymousName: 'ไม่ระบุชื่อ', authorPhoto: null }]
+        return [userId, { displayName: 'ไม่ระบุชื่อ', slug: null, photoURL: null }]
       })
 
       const profiles = await Promise.all(profilePromises)
@@ -64,13 +65,14 @@ export default defineEventHandler(async (event) => {
 
     const posts = snapshot.docs.map(doc => {
       const data = doc.data()
-      const userProfile = userProfiles.get(data.userId) || { anonymousName: 'ไม่ระบุชื่อ', authorPhoto: null }
+      const userProfile = userProfiles.get(data.userId) || { displayName: 'ไม่ระบุชื่อ', slug: null, photoURL: null }
 
       return {
         id: doc.id,
         ...data,
-        authorName: userProfile.anonymousName,
-        authorPhoto: userProfile.authorPhoto,
+        authorName: userProfile.displayName,
+        authorSlug: userProfile.slug,
+        authorPhoto: userProfile.photoURL,
         createdAt: data.createdAt?.toDate?.() || new Date(),
         updatedAt: data.updatedAt?.toDate?.() || new Date()
       }

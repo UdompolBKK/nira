@@ -250,7 +250,7 @@ const loadStories = async (loadMoreMode = false) => {
 
   loading.value = true
   try {
-    const postsRef = collection(firestore, 'posts')
+    const postsRef = collection(firestore, 'storyPosts')
     let q = query(
       postsRef,
       where('visibility', '==', 'public'),

@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
 
     // Add comment to subcollection
     const commentRef = await db
-      .collection('posts')
+      .collection('storyPosts')
       .doc(postId)
       .collection('comments')
       .add({
@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
 
     // Update comment count on post
     await db
-      .collection('posts')
+      .collection('storyPosts')
       .doc(postId)
       .update({
         commentsCount: FieldValue.increment(1)

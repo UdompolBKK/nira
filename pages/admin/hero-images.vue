@@ -116,7 +116,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: 'superadmin'
+  middleware: 'admin'
 })
 
 interface HeroImage {

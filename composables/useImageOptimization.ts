@@ -1,7 +1,7 @@
 /**
  * Image Optimization Composable
  * Handles image optimization for Firebase Storage URLs and local images
- * WITHOUT losing quality - focuses on proper sizing and lazy loading
+ * Includes client-side compression and resizing before upload
  */
 
 interface ImageOptions {
@@ -17,6 +17,18 @@ interface OptimizedImageResult {
   sizes?: string
   width?: number
   height?: number
+}
+
+interface CompressOptions {
+  maxWidth: number
+  maxHeight: number
+  quality: number // 0-1
+  format: 'image/jpeg' | 'image/webp' | 'image/png'
+}
+
+interface ProfileImageResult {
+  full: Blob       // 256x256 for profile page
+  thumbnail: Blob  // 64x64 for cards, comments, etc.
 }
 
 export const useImageOptimization = () => {
@@ -170,6 +182,161 @@ export const useImageOptimization = () => {
     return ratios[type] || '4/3'
   }
 
+  /**
+   * Compress and resize image before upload
+   * Uses Canvas API for client-side processing
+   */
+  const compressImage = (
+    file: File,
+    options: Partial<CompressOptions> = {}
+  ): Promise<Blob> => {
+    const {
+      maxWidth = 1024,
+      maxHeight = 1024,
+      quality = 0.85,
+      format = 'image/jpeg'
+    } = options
+
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+
+      img.onload = () => {
+        let { width, height } = img
+
+        // Calculate new dimensions maintaining aspect ratio
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height)
+          width = Math.round(width * ratio)
+          height = Math.round(height * ratio)
+        }
+
+        canvas.width = width
+        canvas.height = height
+
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'))
+          return
+        }
+
+        // Draw image with smoothing
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
+        ctx.drawImage(img, 0, 0, width, height)
+
+        // Convert to blob
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob)
+            } else {
+              reject(new Error('Failed to compress image'))
+            }
+          },
+          format,
+          quality
+        )
+      }
+
+      img.onerror = () => reject(new Error('Failed to load image'))
+
+      // Load image from file
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        img.src = e.target?.result as string
+      }
+      reader.onerror = () => reject(new Error('Failed to read file'))
+      reader.readAsDataURL(file)
+    })
+  }
+
+  /**
+   * Create square crop (center crop) for profile images
+   */
+  const createSquareCrop = (
+    file: File,
+    size: number,
+    quality: number = 0.9
+  ): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+
+      img.onload = () => {
+        const { width, height } = img
+
+        // Calculate crop area (center square)
+        const minDim = Math.min(width, height)
+        const sx = (width - minDim) / 2
+        const sy = (height - minDim) / 2
+
+        canvas.width = size
+        canvas.height = size
+
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'))
+          return
+        }
+
+        // Draw with high quality
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
+
+        // Draw cropped and scaled image
+        ctx.drawImage(
+          img,
+          sx, sy, minDim, minDim,  // Source (crop area)
+          0, 0, size, size          // Destination
+        )
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob)
+            } else {
+              reject(new Error('Failed to create square crop'))
+            }
+          },
+          'image/jpeg',
+          quality
+        )
+      }
+
+      img.onerror = () => reject(new Error('Failed to load image'))
+
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        img.src = e.target?.result as string
+      }
+      reader.onerror = () => reject(new Error('Failed to read file'))
+      reader.readAsDataURL(file)
+    })
+  }
+
+  /**
+   * Create profile images in multiple sizes
+   * Returns both full size (256px) and thumbnail (64px)
+   */
+  const createProfileImages = async (file: File): Promise<ProfileImageResult> => {
+    const [full, thumbnail] = await Promise.all([
+      createSquareCrop(file, 256, 0.9),    // Full: 256x256, 90% quality
+      createSquareCrop(file, 64, 0.85)     // Thumbnail: 64x64, 85% quality
+    ])
+
+    return { full, thumbnail }
+  }
+
+  /**
+   * Get file size in human readable format
+   */
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
   return {
     getOptimizedUrl,
     generateSrcset,
@@ -179,6 +346,11 @@ export const useImageOptimization = () => {
     isValidImageUrl,
     getPlaceholder,
     createBlurPlaceholder,
-    getAspectRatio
+    getAspectRatio,
+    // New upload optimization functions
+    compressImage,
+    createSquareCrop,
+    createProfileImages,
+    formatFileSize
   }
 }

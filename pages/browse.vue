@@ -314,7 +314,7 @@ const loadActiveUsers = async () => {
   loadingUsers.value = true
   try {
     // Get recent posts
-    const postsRef = collection(firestore, 'posts')
+    const postsRef = collection(firestore, 'storyPosts')
     const q = query(
       postsRef,
       where('visibility', '==', 'public'),

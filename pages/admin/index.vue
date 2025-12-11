@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: 'superadmin'
+  middleware: 'admin'
 })
 
 // Redirect to dashboard

@@ -150,7 +150,7 @@ const loadPosts = async () => {
 
   loading.value = true
   try {
-    const postsRef = collection(firestore, 'posts')
+    const postsRef = collection(firestore, 'storyPosts')
     const q = query(postsRef, orderBy('createdAt', 'desc'), limit(100))
     const snapshot = await getDocs(q)
 
@@ -171,7 +171,7 @@ const deletePost = async (postId: string) => {
   if (!firestore) return
 
   try {
-    await deleteDoc(doc(firestore, 'posts', postId))
+    await deleteDoc(doc(firestore, 'storyPosts', postId))
     await loadPosts()
   } catch (error) {
     console.error('Error deleting post:', error)

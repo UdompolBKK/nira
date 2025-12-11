@@ -131,7 +131,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: 'superadmin'
+  middleware: 'admin'
 })
 
 // Mock stats data - Replace with real Firestore queries

@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
 
     // Get comments from subcollection
     const commentsSnapshot = await db
-      .collection('posts')
+      .collection('storyPosts')
       .doc(postId)
       .collection('comments')
       .orderBy('createdAt', 'asc')
@@ -31,7 +31,8 @@ export default defineEventHandler(async (event) => {
           if (profileDoc.exists) {
             const profileData = profileDoc.data()
             return [authorId, {
-              anonymousName: profileData?.anonymousName || profileData?.displayName || 'ไม่ระบุชื่อ'
+              anonymousName: profileData?.anonymousName || profileData?.displayName || 'ไม่ระบุชื่อ',
+              photoURL: profileData?.photoURL || null
             }]
           }
         } catch (err) {
@@ -49,13 +50,14 @@ export default defineEventHandler(async (event) => {
     // Map comments with user profiles
     const comments = commentsSnapshot.docs.map(doc => {
       const data = doc.data()
-      const userProfile = userProfiles.get(data.authorId) || { anonymousName: 'ไม่ระบุชื่อ' }
+      const userProfile = userProfiles.get(data.authorId) || { anonymousName: 'ไม่ระบุชื่อ', photoURL: null }
 
       return {
         id: doc.id,
         content: data.content,
         authorName: userProfile.anonymousName,
         authorId: data.authorId,
+        authorPhoto: userProfile.photoURL,
         createdAt: data.createdAt?.toDate?.() || new Date()
       }
     })

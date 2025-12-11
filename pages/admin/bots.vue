@@ -924,7 +924,7 @@ import type { BotConfig, TrainingExample } from '~/composables/useBotConfig'
 
 definePageMeta({
   layout: 'admin',
-  middleware: 'superadmin'
+  middleware: 'admin'
 })
 
 useHead({

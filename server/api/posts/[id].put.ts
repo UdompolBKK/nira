@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
 
   try {
     const db = adminFirestore()
-    const postRef = db.collection('posts').doc(id)
+    const postRef = db.collection('storyPosts').doc(id)
     const postDoc = await postRef.get()
 
     if (!postDoc.exists) {

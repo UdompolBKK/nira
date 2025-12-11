@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
 
   // Fetch public posts from Firestore
   const postsSnapshot = await db
-    .collection('posts')
+    .collection('storyPosts')
     .where('visibility', '==', 'public')
     .orderBy('createdAt', 'desc')
     .limit(1000) // Limit for performance

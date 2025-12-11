@@ -99,7 +99,7 @@
             <div v-else>
               <!-- Post content - flows naturally like autobiography text -->
               <div
-                class="text-gray-800 leading-relaxed prose prose-sm max-w-none"
+                class="text-gray-800 leading-relaxed prose prose-sm max-w-none story-content"
                 v-html="post.content"
               />
 
@@ -181,9 +181,20 @@
                   :key="comment.id"
                   class="flex gap-3"
                 >
-                  <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                  <!-- Author Avatar -->
+                  <img
+                    v-if="comment.authorPhoto"
+                    :src="comment.authorPhoto"
+                    :alt="comment.authorName"
+                    class="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                  />
+                  <div
+                    v-else
+                    class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                  >
                     {{ getInitial(comment.authorName) }}
                   </div>
+
                   <div class="flex-1 bg-gray-50 rounded-lg p-3">
                     <p class="text-sm font-semibold text-gray-900 mb-1">{{ comment.authorName }}</p>
                     <p class="text-sm text-gray-700">{{ comment.content }}</p>
@@ -256,6 +267,7 @@ interface Comment {
   content: string
   authorName: string
   authorId: string
+  authorPhoto?: string
   createdAt: Timestamp | Date
 }
 
@@ -493,6 +505,8 @@ onMounted(() => {
 
 .prose :deep(p) {
   @apply mb-2 text-sm;
+  font-family: 'Thai Sarabun New', sans-serif !important;
+  font-weight: 300 !important;
 }
 
 .prose :deep(strong) {

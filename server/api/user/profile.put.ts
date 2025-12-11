@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
 
     // Parse body
     const body = await readBody(event)
-    const { displayName, slug, photoURL } = body
+    const { displayName, slug, aboutMe, photoURL, photoURLThumb } = body
 
     // Validate
     if (!displayName?.trim()) {
@@ -63,8 +63,17 @@ export default defineEventHandler(async (event) => {
       updatedAt: new Date()
     }
 
+    // About me - limit to 300 characters
+    if (aboutMe !== undefined) {
+      updateData.aboutMe = (aboutMe || '').trim().substring(0, 300)
+    }
+
     if (photoURL) {
       updateData.photoURL = photoURL
+    }
+
+    if (photoURLThumb) {
+      updateData.photoURLThumb = photoURLThumb
     }
 
     await userRef.set(updateData, { merge: true })
@@ -75,7 +84,9 @@ export default defineEventHandler(async (event) => {
       profile: {
         displayName: displayName.trim(),
         slug: sanitizedSlug,
-        photoURL: photoURL || null
+        aboutMe: updateData.aboutMe || null,
+        photoURL: photoURL || null,
+        photoURLThumb: photoURLThumb || null
       }
     }
   } catch (err: any) {

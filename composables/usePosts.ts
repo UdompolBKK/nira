@@ -15,9 +15,9 @@ export const MOOD_CATEGORIES = {
 export interface Post {
   id: string
   userId: string
-  authorName: string
-  authorSlug?: string
-  authorPhoto?: string
+  authorName?: string      // Fetched from users collection (not stored in storyPosts)
+  authorSlug?: string      // Fetched from users collection (not stored in storyPosts)
+  authorPhoto?: string     // Fetched from users collection (not stored in storyPosts)
   content: string
   excerpt?: string
   visibility: 'public' | 'friends' | 'private'

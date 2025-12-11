@@ -146,23 +146,29 @@
 
                 <!-- Notifications List -->
                 <div v-else-if="notifications.length > 0" class="divide-y divide-gray-100 overflow-y-auto max-h-[420px]">
-                  <NuxtLink
+                  <div
                     v-for="notif in notifications"
                     :key="notif.id"
-                    :to="notif.actionUrl || '#'"
-                    @click="handleNotificationClick(notif)"
                     :class="[
-                      'block p-4 hover:bg-gray-50 transition-colors cursor-pointer',
+                      'p-4 transition-colors',
                       !notif.read ? 'bg-blue-50' : ''
                     ]"
                   >
                     <div class="flex gap-3">
                       <!-- Icon/Avatar -->
+                      <NuxtLink
+                        v-if="notif.senderPhoto && notif.senderSlug"
+                        :to="`/users/${notif.senderSlug}`"
+                        class="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex-shrink-0 overflow-hidden hover:ring-2 hover:ring-purple-300 transition-all"
+                        @click="notificationOpen = false"
+                      >
+                        <img :src="notif.senderPhoto" :alt="notif.senderName" class="w-full h-full object-cover" />
+                      </NuxtLink>
                       <div
-                        v-if="notif.fromUserPhoto"
+                        v-else-if="notif.senderPhoto"
                         class="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex-shrink-0 overflow-hidden"
                       >
-                        <img :src="notif.fromUserPhoto" :alt="notif.fromUserName" class="w-full h-full object-cover" />
+                        <img :src="notif.senderPhoto" :alt="notif.senderName" class="w-full h-full object-cover" />
                       </div>
                       <div
                         v-else
@@ -174,15 +180,54 @@
 
                       <!-- Content -->
                       <div class="flex-1 min-w-0">
-                        <p class="text-sm text-gray-900 font-medium mb-1">{{ notif.title }}</p>
-                        <p class="text-sm text-gray-600">{{ notif.message }}</p>
+                        <NuxtLink
+                          v-if="notif.senderSlug"
+                          :to="`/users/${notif.senderSlug}`"
+                          class="text-sm text-gray-900 font-medium mb-1 hover:text-purple-600 hover:underline transition-colors block"
+                          @click="notificationOpen = false"
+                        >
+                          {{ notif.senderName || 'ผู้ใช้' }}
+                        </NuxtLink>
+                        <p v-else class="text-sm text-gray-900 font-medium mb-1">{{ notif.senderName || 'ผู้ใช้' }}</p>
+                        <p class="text-sm text-gray-600">
+                          <span v-if="notif.type === 'friend_request'">ขอเป็นเพื่อนกับคุณ</span>
+                          <span v-else-if="notif.type === 'friend_accepted'">ยอมรับคำขอเป็นเพื่อนของคุณ</span>
+                          <span v-else-if="notif.type === 'comment'">แสดงความคิดเห็นโพสต์ของคุณ</span>
+                          <span v-else-if="notif.type === 'like'">ถูกใจโพสต์ของคุณ</span>
+                          <span v-else>{{ notif.message }}</span>
+                        </p>
                         <p class="text-xs text-gray-500 mt-1">{{ formatNotificationTime(notif.createdAt) }}</p>
+
+                        <!-- Friend Request Action Buttons -->
+                        <div v-if="notif.type === 'friend_request' && notif.status === 'pending'" class="flex gap-2 mt-3">
+                          <button
+                            @click="handleAcceptFriend(notif)"
+                            :disabled="processingNotif === notif.id"
+                            class="flex-1 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm rounded-lg font-medium hover:shadow-md transition-all disabled:opacity-50"
+                          >
+                            <Icon v-if="processingNotif === notif.id" name="lucide:loader-2" class="w-4 h-4 inline animate-spin mr-1" />
+                            {{ processingNotif === notif.id ? 'กำลังรับ...' : 'รับเพื่อน' }}
+                          </button>
+                          <button
+                            @click="handleRejectFriend(notif)"
+                            :disabled="processingNotif === notif.id"
+                            class="flex-1 px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg font-medium hover:bg-gray-200 transition-all disabled:opacity-50"
+                          >
+                            {{ processingNotif === notif.id ? 'กำลังปฏิเสธ...' : 'ปฏิเสธ' }}
+                          </button>
+                        </div>
+                        <div v-else-if="notif.type === 'friend_request' && notif.status === 'accepted'" class="mt-2">
+                          <span class="text-xs text-green-600 font-medium">✓ รับเป็นเพื่อนแล้ว</span>
+                        </div>
+                        <div v-else-if="notif.type === 'friend_request' && notif.status === 'rejected'" class="mt-2">
+                          <span class="text-xs text-gray-500">ปฏิเสธแล้ว</span>
+                        </div>
                       </div>
 
                       <!-- Unread indicator -->
                       <div v-if="!notif.read" class="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2"></div>
                     </div>
-                  </NuxtLink>
+                  </div>
                 </div>
 
                 <!-- Empty state -->
@@ -246,18 +291,24 @@
             </div>
           </div>
 
-          <!-- If not logged in: show login button on mobile (right side) -->
-          <NuxtLink
-            v-else-if="!authLoading"
-            to="/login"
-            class="rounded-lg bg-black px-4 md:px-6 py-2 font-medium text-white hover:bg-gray-900 transition-colors focus:outline-none focus:ring-0 text-sm md:text-base"
-            style="color: #fff"
-          >
-            เข้าสู่ระบบ
-          </NuxtLink>
+          <!-- If not logged in: show login button -->
+          <ClientOnly v-if="!user">
+            <NuxtLink
+              v-if="!authLoading"
+              to="/login"
+              class="rounded-lg bg-black px-4 md:px-6 py-2 font-medium text-white hover:bg-gray-900 transition-colors focus:outline-none focus:ring-0 text-sm md:text-base"
+              style="color: #fff"
+            >
+              เข้าสู่ระบบ
+            </NuxtLink>
 
-          <!-- Loading state while auth initializes -->
-          <div v-else class="h-9 w-20 md:w-32 bg-gray-100 rounded-lg animate-pulse"></div>
+            <!-- Loading state while auth initializes -->
+            <div v-else class="h-9 w-20 md:w-32 bg-gray-100 rounded-lg animate-pulse"></div>
+
+            <template #fallback>
+              <div class="h-9 w-20 md:w-32 bg-gray-100 rounded-lg"></div>
+            </template>
+          </ClientOnly>
         </div>
       </div>
 
@@ -369,8 +420,9 @@ const isActive = (path: string) => {
 const mobileMenuOpen = ref(false)
 const accountMenuOpen = ref(false)
 const notificationOpen = ref(false)
+const processingNotif = ref<string | null>(null)
 const { user, logout, isSuperAdmin, loading: authLoading } = useAuth()
-const { notifications, unreadCount, loading: notificationsLoading, subscribeToNotifications, markAsRead, markAllAsRead } = useNotifications()
+const { notifications, unreadCount, loading: notificationsLoading, subscribeToNotifications, markAsRead, markAllAsRead, fetchNotificationsFromAPI } = useNotifications()
 
 // Profile state - reactive to user changes
 const profile = ref<{ displayName?: string; photoURL?: string; slug?: string } | null>(null)
@@ -506,6 +558,87 @@ const handleNotificationClick = async (notif: any) => {
   // Mark as read
   if (!notif.read) {
     await markAsRead(notif.id)
+  }
+}
+
+// Handle accept friend request
+const handleAcceptFriend = async (notif: any) => {
+  if (!user.value || !notif.senderId) {
+    console.error('Missing user or senderId', { user: !!user.value, senderId: notif.senderId })
+    alert('ไม่สามารถรับเพื่อนได้ ข้อมูลไม่ครบ')
+    return
+  }
+
+  processingNotif.value = notif.id
+
+  try {
+    const firebaseUser = user.value._firebaseUser
+    if (!firebaseUser) return
+
+    const token = await firebaseUser.getIdToken()
+
+    await $fetch('/api/friends/accept', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: {
+        requestId: notif.requestId, // May be undefined for old notifications
+        senderId: notif.senderId,
+        notificationId: notif.id // Pass notification ID to update status
+      }
+    })
+
+    // Mark notification as read
+    await markAsRead(notif.id)
+
+    // Refresh notifications to update UI
+    await fetchNotificationsFromAPI()
+  } catch (err: any) {
+    console.error('Error accepting friend request:', err)
+    alert(err.data?.message || 'เกิดข้อผิดพลาดในการรับเพื่อน')
+  } finally {
+    processingNotif.value = null
+  }
+}
+
+// Handle reject friend request
+const handleRejectFriend = async (notif: any) => {
+  if (!user.value || !notif.senderId) {
+    console.error('Missing user or senderId')
+    return
+  }
+
+  processingNotif.value = notif.id
+
+  try {
+    const firebaseUser = user.value._firebaseUser
+    if (!firebaseUser) return
+
+    const token = await firebaseUser.getIdToken()
+
+    await $fetch('/api/friends/reject', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: {
+        requestId: notif.requestId,
+        senderId: notif.senderId,
+        notificationId: notif.id
+      }
+    })
+
+    // Mark notification as read
+    await markAsRead(notif.id)
+
+    // Refresh notifications
+    await fetchNotificationsFromAPI()
+  } catch (err: any) {
+    console.error('Error rejecting friend request:', err)
+    alert(err.data?.message || 'เกิดข้อผิดพลาดในการปฏิเสธ')
+  } finally {
+    processingNotif.value = null
   }
 }
 </script>

@@ -434,6 +434,7 @@ useHead({
 
 const { user } = useAuth()
 const { posts, loading, hasMore, createPost, updatePost, deletePost, getUserPosts, createInsertedPost, error } = usePosts()
+const { selectedBot, initializeSelectedBot } = useBotConfig()
 
 // User profile for anonymous name and photo
 const userProfile = ref<{ displayName: string | null; photoURL: string | null } | null>(null)
@@ -473,7 +474,10 @@ const insertContent = ref('')
 const insertMood = ref<MoodCategory>('normal')
 const insertEditorRef = ref<HTMLElement | null>(null)
 
-const placeholder = 'เขียนเรื่องราวของคุณที่นี่...'
+// Dynamic placeholder from selected bot
+const placeholder = computed(() => {
+  return selectedBot.value?.greeting || 'เขียนเรื่องราวของคุณที่นี่...'
+})
 
 // Character count
 const characterCount = computed(() => {
@@ -724,6 +728,9 @@ onMounted(async () => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
 
+  // Initialize selected bot for greeting message
+  initializeSelectedBot()
+
   if (user.value) {
     await Promise.all([
       getUserPosts(user.value.uid, 10),
@@ -743,6 +750,11 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Prose typography styles */
+.prose :deep(p) {
+  @apply mb-2 text-sm;
+}
+
 [contenteditable]:empty:before {
   content: attr(data-placeholder);
   color: #9ca3af;

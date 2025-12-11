@@ -31,16 +31,9 @@
     <!-- Main content -->
     <main class="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
       <!-- Loading state -->
-      <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        <div
-          v-for="i in 20"
-          :key="i"
-          class="bg-white rounded-xl p-4 md:p-5 animate-pulse text-center"
-        >
-          <div class="w-16 h-16 rounded-full bg-gray-200 mx-auto mb-3" />
-          <div class="h-3 w-20 bg-gray-200 rounded mx-auto mb-2" />
-          <div class="h-2 w-12 bg-gray-200 rounded mx-auto" />
-        </div>
+      <div v-if="loading" class="flex flex-col items-center justify-center py-20">
+        <Icon name="lucide:loader-2" class="w-10 h-10 text-gray-400 animate-spin mb-4" />
+        <p class="text-sm text-gray-500">กำลังโหลดข้อมูล...</p>
       </div>
 
       <!-- Users grid -->

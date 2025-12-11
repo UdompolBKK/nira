@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
     const db = adminFirestore()
     const emotionId = `${postId}_${authUser.uid}`
     const emotionRef = db.collection('emotions').doc(emotionId)
-    const postRef = db.collection('posts').doc(postId)
+    const postRef = db.collection('storyPosts').doc(postId)
 
     const emotionDoc = await emotionRef.get()
 

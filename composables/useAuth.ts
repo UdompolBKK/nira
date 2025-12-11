@@ -5,6 +5,7 @@ import {
   GoogleAuthProvider,
   signOut,
   onAuthStateChanged,
+  sendEmailVerification as firebaseSendEmailVerification,
   type User,
   type UserCredential,
   type Auth
@@ -182,6 +183,29 @@ export const useAuth = () => {
 
 
   /**
+   * Send email verification
+   */
+  const sendEmailVerification = async (): Promise<boolean> => {
+    const auth = getAuthInstance()
+    if (!auth || !auth.currentUser) {
+      error.value = 'ไม่พบผู้ใช้งาน'
+      return false
+    }
+
+    try {
+      error.value = null
+      await firebaseSendEmailVerification(auth.currentUser, {
+        url: `${window.location.origin}/login?verified=true`
+      })
+      return true
+    } catch (err: any) {
+      error.value = getErrorMessage(err.code)
+      console.error('Send email verification error:', err)
+      return false
+    }
+  }
+
+  /**
    * Sign out
    */
   const logout = async (): Promise<boolean> => {
@@ -213,7 +237,8 @@ export const useAuth = () => {
       'auth/too-many-requests': 'คำขอมากเกินไป กรุณาลองใหม่ภายหลัง',
       'auth/popup-closed-by-user': 'ปิดหน้าต่างการเข้าสู่ระบบ',
       'auth/cancelled-popup-request': 'ยกเลิกการเข้าสู่ระบบ',
-      'auth/account-exists-with-different-credential': 'บัญชีนี้มีอยู่แล้วด้วยวิธีการเข้าสู่ระบบอื่น'
+      'auth/account-exists-with-different-credential': 'บัญชีนี้มีอยู่แล้วด้วยวิธีการเข้าสู่ระบบอื่น',
+      'auth/too-many-requests': 'ส่งอีเมลมากเกินไป กรุณารอสักครู่แล้วลองใหม่'
     }
     return errorMessages[code] || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง'
   }
@@ -285,6 +310,7 @@ export const useAuth = () => {
     signInWithEmail,
     signUpWithEmail,
     signInWithGoogle,
+    sendEmailVerification,
     logout
   }
 }

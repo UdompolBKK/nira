@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
 
   try {
     const db = adminFirestore()
-    const postRef = db.collection('posts').doc(id)
+    const postRef = db.collection('storyPosts').doc(id)
 
     await postRef.update({
       viewCount: FieldValue.increment(1)

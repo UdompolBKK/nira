@@ -5,6 +5,8 @@
       <slot />
     </main>
     <Footer />
+    <!-- Cookie Consent Banner (PDPA Compliance) -->
+    <CookieConsent />
   </div>
 </template>
 

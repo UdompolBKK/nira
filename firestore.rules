@@ -29,109 +29,91 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super-admin';
     }
 
-    // ตรวจสอบว่าเป็น premium user
-    function isPremium() {
-      return isAuthenticated() &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isPremium == true;
-    }
-
     // ============================================
     // Users Collection
+    // - Relational Model: เก็บเฉพาะ UID
+    // - ข้อมูล user ทั้งหมดอยู่ที่นี่ (Single Source of Truth)
+    // - Fields: displayName, slug, aboutMe, photoURL, photoURLThumb, role, isPremium
     // ============================================
     match /users/{userId} {
-      // อ่านได้ทุกคน (สำหรับดู profile)
+      // อ่านได้ทุกคน (สำหรับดู profile และ fetch user data แบบ dynamic)
       allow read: if true;
 
       // สร้างได้เมื่อ login และ userId ตรงกับ auth.uid
       allow create: if isOwner(userId);
 
-      // แก้ไขได้เฉพาะเจ้าของ หรือ admin
-      allow update: if isOwner(userId) || isAdmin();
+      // แก้ไขได้เฉพาะเจ้าของ (ผ่าน API เป็นหลัก)
+      // Admin SDK bypass rules อยู่แล้ว
+      allow update: if isOwner(userId);
 
-      // ลบได้เฉพาะ super-admin
-      allow delete: if isSuperAdmin();
+      // ลบได้เฉพาะ super-admin (ผ่าน Admin SDK)
+      allow delete: if false;
     }
 
     // ============================================
-    // Posts Collection (Diary entries)
-    // ============================================
-    match /posts/{postId} {
-      // อ่านได้ถ้า:
-      // 1. โพสต์เป็น public
-      // 2. เป็นเจ้าของโพสต์
-      // 3. เป็น admin
-      // 4. เป็นเพื่อนและโพสต์ visibility = friends
-      allow read: if resource.data.visibility == 'public'
-                  || isOwner(resource.data.userId)
-                  || isAdmin();
-
-      // สร้างได้เมื่อ login
-      allow create: if isAuthenticated()
-                    && request.resource.data.userId == request.auth.uid;
-
-      // แก้ไขได้เฉพาะเจ้าของ
-      allow update: if isOwner(resource.data.userId);
-
-      // ลบได้เฉพาะเจ้าของ หรือ admin
-      allow delete: if isOwner(resource.data.userId) || isAdmin();
-    }
-
-    // ============================================
-    // Story Posts Collection (เรื่องราวชีวิต - autobiographical stories)
+    // Story Posts Collection (เรื่องราวชีวิต)
+    // - Relational: เก็บเฉพาะ userId (ไม่เก็บ authorName, authorPhoto)
+    // - ใช้ API + Admin SDK เป็นหลัก
     // ============================================
     match /storyPosts/{postId} {
-      // อ่านได้ถ้า:
-      // 1. โพสต์เป็น public
-      // 2. เป็นเจ้าของโพสต์
-      // 3. เป็น admin
+      // อ่านได้ถ้า public หรือเป็นเจ้าของ
       allow read: if resource.data.visibility == 'public'
-                  || isOwner(resource.data.userId)
-                  || isAdmin();
+                  || isOwner(resource.data.userId);
 
-      // สร้างได้เมื่อ login
-      allow create: if isAuthenticated()
-                    && request.resource.data.userId == request.auth.uid;
-
-      // แก้ไขได้เฉพาะเจ้าของ
-      allow update: if isOwner(resource.data.userId);
-
-      // ลบได้เฉพาะเจ้าของ หรือ admin
-      allow delete: if isOwner(resource.data.userId) || isAdmin();
+      // เขียนผ่าน API เท่านั้น (Admin SDK)
+      allow create, update, delete: if false;
     }
 
     // ============================================
-    // Comments Collection
+    // Vent Posts Collection (ระบายความรู้สึก)
+    // - Relational: เก็บเฉพาะ authorId (ไม่เก็บ authorName, authorPhoto)
+    // - ใช้ API + Admin SDK เป็นหลัก
+    // ============================================
+    match /ventPosts/{postId} {
+      // อ่านได้ทุกคน (anonymous posts)
+      allow read: if true;
+
+      // เขียนผ่าน API เท่านั้น (Admin SDK)
+      allow create, update, delete: if false;
+
+      // Subcollection: Comments
+      match /comments/{commentId} {
+        // อ่านได้ทุกคน
+        allow read: if true;
+
+        // เขียนผ่าน API เท่านั้น (Admin SDK)
+        allow create, update, delete: if false;
+      }
+    }
+
+    // ============================================
+    // Comments Collection (standalone)
+    // - Relational: เก็บเฉพาะ userId (ไม่เก็บ authorName, authorPhoto)
     // ============================================
     match /comments/{commentId} {
       // อ่านได้ทุกคน
       allow read: if true;
 
-      // สร้างได้เมื่อ login
-      allow create: if isAuthenticated()
-                    && request.resource.data.userId == request.auth.uid;
-
-      // แก้ไขได้เฉพาะเจ้าของ
-      allow update: if isOwner(resource.data.userId);
-
-      // ลบได้เฉพาะเจ้าของ หรือ admin
-      allow delete: if isOwner(resource.data.userId) || isAdmin();
+      // เขียนผ่าน API เท่านั้น (Admin SDK)
+      allow create, update, delete: if false;
     }
 
     // ============================================
     // Emotions/Reactions Collection
+    // - Relational: เก็บเฉพาะ userId
     // ============================================
     match /emotions/{emotionId} {
       // อ่านได้ทุกคน
       allow read: if true;
 
-      // สร้าง/แก้ไข/ลบ ได้เมื่อ login
-      allow create: if isAuthenticated()
-                    && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isOwner(resource.data.userId);
+      // เขียนผ่าน API เท่านั้น (Admin SDK)
+      allow create, update, delete: if false;
     }
 
     // ============================================
     // Friends Collection
+    // - Relational: เก็บเฉพาะ userId + friendId
+    // - ไม่เก็บ displayName, photoURL
     // ============================================
     match /friends/{friendshipId} {
       // อ่านได้เฉพาะคนที่เกี่ยวข้อง
@@ -139,199 +121,166 @@ service cloud.firestore {
                   (resource.data.userId == request.auth.uid ||
                    resource.data.friendId == request.auth.uid);
 
-      // สร้างได้เมื่อ login
-      allow create: if isAuthenticated()
-                    && request.resource.data.userId == request.auth.uid;
-
-      // แก้ไข/ลบ ได้เฉพาะคนที่เกี่ยวข้อง
-      allow update, delete: if isAuthenticated() &&
-                            (resource.data.userId == request.auth.uid ||
-                             resource.data.friendId == request.auth.uid);
+      // เขียนผ่าน API เท่านั้น (Admin SDK)
+      allow create, update, delete: if false;
     }
 
     // ============================================
     // Friend Requests Collection
+    // - Relational: เก็บเฉพาะ senderId + receiverId
+    // - ไม่เก็บ senderName, senderPhoto, receiverName
     // ============================================
     match /friendRequests/{requestId} {
       // อ่านได้เฉพาะผู้ส่งหรือผู้รับ
       allow read: if isAuthenticated() &&
-                  (resource.data.fromUserId == request.auth.uid ||
-                   resource.data.toUserId == request.auth.uid);
+                  (resource.data.senderId == request.auth.uid ||
+                   resource.data.receiverId == request.auth.uid);
 
-      // สร้างได้เมื่อ login
-      allow create: if isAuthenticated()
-                    && request.resource.data.fromUserId == request.auth.uid;
-
-      // แก้ไข/ลบ ได้เฉพาะผู้ส่งหรือผู้รับ
-      allow update, delete: if isAuthenticated() &&
-                            (resource.data.fromUserId == request.auth.uid ||
-                             resource.data.toUserId == request.auth.uid);
+      // เขียนผ่าน API เท่านั้น (Admin SDK)
+      allow create, update, delete: if false;
     }
 
     // ============================================
-    // Vent Posts Collection (ระบายความรู้สึก)
+    // Notifications Collection
+    // - Relational: เก็บเฉพาะ userId + senderId
+    // - ไม่เก็บ senderName, senderPhoto
     // ============================================
-    match /ventPosts/{postId} {
-      // อ่านได้ทุกคน (เพราะเป็น anonymous posts)
-      allow read: if true;
+    match /notifications/{notificationId} {
+      // อ่านได้เฉพาะเจ้าของ
+      allow read: if isOwner(resource.data.userId);
+
+      // แก้ไข read status ได้ (mark as read)
+      allow update: if isOwner(resource.data.userId) &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+
+      // สร้าง/ลบ ผ่าน API เท่านั้น (Admin SDK)
+      allow create, delete: if false;
+    }
+
+    // ============================================
+    // User Consents Collection (PDPA)
+    // - เก็บ consent records 5 ปี
+    // ============================================
+    match /userConsents/{consentId} {
+      // อ่านได้เฉพาะเจ้าของ
+      allow read: if isOwner(resource.data.userId);
 
       // สร้างได้เมื่อ login
-      allow create: if isAuthenticated()
-                    && request.resource.data.authorId == request.auth.uid;
+      allow create: if isAuthenticated() &&
+                    request.resource.data.userId == request.auth.uid;
 
-      // แก้ไขได้เฉพาะเจ้าของหรือ admin (สำหรับ like/comment count)
-      allow update: if isAuthenticated() &&
-                    (resource.data.authorId == request.auth.uid || isAdmin());
-
-      // ลบได้เฉพาะเจ้าของ หรือ admin
-      allow delete: if isAuthenticated() &&
-                    (resource.data.authorId == request.auth.uid || isAdmin());
-
-      // Subcollection: Comments
-      match /comments/{commentId} {
-        // อ่านได้ทุกคน
-        allow read: if true;
-
-        // สร้างได้เมื่อ login
-        allow create: if isAuthenticated()
-                      && request.resource.data.authorId == request.auth.uid;
-
-        // แก้ไขได้เฉพาะเจ้าของ
-        allow update: if isAuthenticated() &&
-                      resource.data.authorId == request.auth.uid;
-
-        // ลบได้เฉพาะเจ้าของ หรือ admin
-        allow delete: if isAuthenticated() &&
-                      (resource.data.authorId == request.auth.uid || isAdmin());
-      }
+      // แก้ไข/ลบ ไม่ได้ (immutable for legal compliance)
+      allow update, delete: if false;
     }
 
     // ============================================
     // Bot Chats Collection
+    // - เข้ารหัส AES-256
     // ============================================
     match /botChats/{chatId} {
       // อ่าน/เขียน ได้เฉพาะเจ้าของ
-      allow read, write: if isOwner(resource.data.userId) ||
-                         (isAuthenticated() && request.resource.data.userId == request.auth.uid);
+      allow read: if isOwner(resource.data.userId);
+      allow create: if isAuthenticated() &&
+                    request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(resource.data.userId);
+      allow delete: if isOwner(resource.data.userId);
     }
 
     // ============================================
-    // Bots Configuration Collection
+    // Bot Configs Collection
     // ============================================
-    match /bots/{botId} {
+    match /botConfigs/{botId} {
       // อ่านได้ทุกคน
       allow read: if true;
 
-      // สร้าง/แก้ไข/ลบ ได้เฉพาะ admin
-      allow create, update, delete: if isAdmin();
+      // เขียนได้เฉพาะ admin (ผ่าน Admin SDK)
+      allow create, update, delete: if false;
     }
 
     // ============================================
     // User Bot Preferences Collection
     // ============================================
-    match /userBotPreferences/{userId} {
-      // อ่านได้ทุกคน (สำหรับ sync cross-device)
-      allow read: if true;
-
-      // เขียนได้ทุกคน (anonymous users ใช้ deviceId)
-      allow write: if true;
-    }
-
-    // ============================================
-    // Listener Lessons Collection
-    // ============================================
-    match /listenerLessons/{lessonId} {
+    match /userBotPreferences/{prefId} {
       // อ่านได้ทุกคน
       allow read: if true;
 
-      // สร้าง/แก้ไข/ลบ ได้เฉพาะ admin
-      allow create, update, delete: if isAdmin();
+      // เขียนได้ทุกคน (รวม anonymous users)
+      allow create, update: if true;
+      allow delete: if false;
     }
 
     // ============================================
     // Subscriptions Collection
+    // - จัดการผ่าน Stripe webhook + Admin SDK
     // ============================================
     match /subscriptions/{subId} {
-      // อ่านได้เฉพาะเจ้าของ หรือ admin
-      allow read: if isOwner(resource.data.userId) || isAdmin();
+      // อ่านได้เฉพาะเจ้าของ
+      allow read: if isOwner(resource.data.userId);
 
-      // สร้าง/แก้ไข ได้เฉพาะ admin (Stripe webhook จะใช้ admin SDK)
-      allow create, update: if isAdmin();
-
-      // ลบได้เฉพาะ super-admin
-      allow delete: if isSuperAdmin();
+      // เขียนผ่าน Admin SDK เท่านั้น
+      allow create, update, delete: if false;
     }
 
     // ============================================
-    // Notifications Collection
-    // ============================================
-    match /notifications/{notificationId} {
-      // อ่าน/แก้ไข ได้เฉพาะเจ้าของ
-      allow read, update: if isOwner(resource.data.userId);
-
-      // สร้างได้ทุกคนที่ login (สำหรับส่ง notification ให้คนอื่น)
-      allow create: if isAuthenticated();
-
-      // ลบได้เฉพาะเจ้าของ
-      allow delete: if isOwner(resource.data.userId);
-    }
-
-    // ============================================
-    // Reports Collection (รายงานโพสต์/ผู้ใช้ที่มีปัญหา)
+    // Reports Collection
     // ============================================
     match /reports/{reportId} {
-      // อ่านได้เฉพาะ admin
-      allow read: if isAdmin();
+      // อ่านไม่ได้จาก client (admin ใช้ Admin SDK)
+      allow read: if false;
 
       // สร้างได้เมื่อ login
-      allow create: if isAuthenticated()
-                    && request.resource.data.reporterId == request.auth.uid;
+      allow create: if isAuthenticated() &&
+                    request.resource.data.reporterId == request.auth.uid;
 
-      // แก้ไข/ลบ ได้เฉพาะ admin
-      allow update, delete: if isAdmin();
+      // แก้ไข/ลบ ผ่าน Admin SDK เท่านั้น
+      allow update, delete: if false;
     }
 
     // ============================================
-    // Admin-only Collections
-    // ============================================
-    match /adminLogs/{logId} {
-      allow read, write: if isAdmin();
-    }
-
-    match /analytics/{docId} {
-      allow read: if isAdmin();
-      allow write: if isAuthenticated(); // สำหรับ track pageviews
-    }
-
-    // ============================================
-    // Page Views Collection
+    // Page Views Collection (Analytics)
     // ============================================
     match /pageviews/{viewId} {
-      allow read: if isAdmin();
-      allow create: if true; // ทุกคนสามารถบันทึก pageview ได้
-      allow update, delete: if isAdmin();
+      // อ่านไม่ได้จาก client
+      allow read: if false;
+
+      // สร้างได้ทุกคน (track pageview)
+      allow create: if true;
+
+      // แก้ไข/ลบ ไม่ได้
+      allow update, delete: if false;
     }
 
     // ============================================
     // Articles Collection
     // ============================================
     match /articles/{articleId} {
-      // อ่านได้ทุกคน (เฉพาะ published)
-      allow read: if resource.data.isPublished == true || isAdmin();
+      // อ่านได้ถ้า published
+      allow read: if resource.data.isPublished == true;
 
-      // สร้าง/แก้ไข/ลบ ได้เฉพาะ admin
-      allow create, update, delete: if isAdmin();
+      // เขียนผ่าน Admin SDK เท่านั้น
+      allow create, update, delete: if false;
     }
 
     // ============================================
     // About Collection
     // ============================================
     match /about/{aboutId} {
-      // อ่านได้ทุกคน (เฉพาะ published)
-      allow read: if resource.data.isPublished == true || isAdmin();
+      // อ่านได้ถ้า published
+      allow read: if resource.data.isPublished == true;
 
-      // สร้าง/แก้ไข/ลบ ได้เฉพาะ admin
-      allow create, update, delete: if isAdmin();
+      // เขียนผ่าน Admin SDK เท่านั้น
+      allow create, update, delete: if false;
+    }
+
+    // ============================================
+    // Admin Collections (Admin SDK only)
+    // ============================================
+    match /adminLogs/{logId} {
+      allow read, write: if false;
+    }
+
+    match /analytics/{docId} {
+      allow read, write: if false;
     }
   }
 }

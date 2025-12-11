@@ -32,20 +32,47 @@
           <!-- Author Header -->
           <div class="p-6 pb-4">
             <div class="flex items-start gap-4 mb-6">
-              <img
-                v-if="post.authorPhotoURL"
-                :src="post.authorPhotoURL"
-                alt="Profile"
-                class="w-10 h-10 rounded-full object-cover"
-              />
-              <div
-                v-else
-                class="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium text-sm"
+              <NuxtLink
+                v-if="post.authorSlug"
+                :to="`/users/${post.authorSlug}`"
+                class="flex-shrink-0"
               >
-                {{ post.authorInitial }}
-              </div>
+                <img
+                  v-if="post.authorPhotoURL"
+                  :src="post.authorPhotoURL"
+                  alt="Profile"
+                  class="w-10 h-10 rounded-full object-cover hover:ring-2 hover:ring-gray-300 transition-all"
+                />
+                <div
+                  v-else
+                  class="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium text-sm hover:bg-gray-800 transition-all"
+                >
+                  {{ post.authorInitial }}
+                </div>
+              </NuxtLink>
+              <template v-else>
+                <img
+                  v-if="post.authorPhotoURL"
+                  :src="post.authorPhotoURL"
+                  alt="Profile"
+                  class="w-10 h-10 rounded-full object-cover"
+                />
+                <div
+                  v-else
+                  class="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium text-sm"
+                >
+                  {{ post.authorInitial }}
+                </div>
+              </template>
               <div class="flex-1 min-w-0">
-                <p class="font-medium text-gray-900 text-sm">{{ post.authorName }}</p>
+                <NuxtLink
+                  v-if="post.authorSlug"
+                  :to="`/users/${post.authorSlug}`"
+                  class="font-medium text-gray-900 text-sm hover:text-blue-600 transition-colors"
+                >
+                  {{ post.authorName }}
+                </NuxtLink>
+                <p v-else class="font-medium text-gray-900 text-sm">{{ post.authorName }}</p>
                 <div class="flex items-center gap-2 text-xs text-gray-500">
                   <span>{{ formatTime(post.createdAt) }}</span>
                   <span v-if="post.editedAt" class="text-gray-400">• แก้ไข</span>
@@ -167,7 +194,14 @@
               :key="comment.id"
               class="flex gap-2 p-3 rounded-lg bg-gray-50"
             >
+              <img
+                v-if="comment.authorPhotoURL"
+                :src="comment.authorPhotoURL"
+                alt="Profile"
+                class="w-7 h-7 rounded-full object-cover flex-shrink-0"
+              />
               <div
+                v-else
                 class="w-7 h-7 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium text-xs flex-shrink-0"
               >
                 {{ comment.authorInitial }}
@@ -223,6 +257,7 @@ interface VentPost {
   content: string
   authorId: string
   authorName: string
+  authorSlug?: string
   authorInitial: string
   authorPhotoURL?: string | null
   isAnonymous: boolean
@@ -242,6 +277,7 @@ interface VentComment {
   authorId: string
   authorName: string
   authorInitial: string
+  authorPhotoURL?: string | null
   createdAt: any
 }
 
@@ -330,16 +366,13 @@ const toggleLike = async () => {
       })
 
       // สร้างการแจ้งเตือนให้เจ้าของโพสต์ (ถ้าไม่ใช่ตัวเอง)
+      // Relational Model: Store only UID, name/photo fetched dynamically from users collection
       if (post.value.authorId !== user.value.uid) {
         await createNotification({
           userId: post.value.authorId,
           type: 'like',
-          title: 'มีคนกดใจโพสต์ของคุณ',
-          message: `${displayName.value} กดใจโพสต์ของคุณ`,
           actionUrl: `/problems/${post.value.id}`,
-          fromUserId: user.value.uid,
-          fromUserName: displayName.value,
-          fromUserPhoto: userProfile.value?.photoURL,
+          senderId: user.value.uid, // Only store UID
           postId: post.value.id
         })
       }
@@ -372,16 +405,13 @@ const addComment = async () => {
     })
 
     // สร้างการแจ้งเตือนให้เจ้าของโพสต์ (ถ้าไม่ใช่ตัวเอง)
+    // Relational Model: Store only UID, name/photo fetched dynamically from users collection
     if (post.value.authorId !== user.value.uid) {
       await createNotification({
         userId: post.value.authorId,
         type: 'comment',
-        title: 'มีคนแสดงความคิดเห็นในโพสต์ของคุณ',
-        message: `${displayName.value}: "${commentContent.substring(0, 50)}${commentContent.length > 50 ? '...' : ''}"`,
         actionUrl: `/my-problem/${post.value.id}`,
-        fromUserId: user.value.uid,
-        fromUserName: displayName.value,
-        fromUserPhoto: userProfile.value?.photoURL,
+        senderId: user.value.uid, // Only store UID
         postId: post.value.id
       })
     }
@@ -442,6 +472,7 @@ onMounted(async () => {
       let authorName = 'ผู้ใช้นิรนาม'
       let authorInitial = 'U'
       let authorPhotoURL = null
+      let authorSlug = undefined
 
       try {
         const userDoc = await getDoc(doc(firestore, 'users', data.authorId))
@@ -450,6 +481,7 @@ onMounted(async () => {
           authorName = userData.displayName || userData.slug || 'ผู้ใช้นิรนาม'
           authorInitial = authorName.charAt(0).toUpperCase()
           authorPhotoURL = userData.photoURL || null
+          authorSlug = userData.slug
         }
       } catch (err) {
         console.error('Error loading author profile:', err)
@@ -459,6 +491,7 @@ onMounted(async () => {
         id: postSnap.id,
         ...data,
         authorName,
+        authorSlug,
         authorInitial,
         authorPhotoURL,
         isLiked: data.likes?.includes(user.value?.uid)
@@ -473,11 +506,33 @@ onMounted(async () => {
       const commentsRef = collection(postRef, 'comments')
       const commentsQuery = query(commentsRef, orderBy('createdAt', 'asc'))
 
-      onSnapshot(commentsQuery, (snapshot) => {
-        comments.value = snapshot.docs.map(commentDoc => ({
-          id: commentDoc.id,
-          ...commentDoc.data()
-        } as VentComment))
+      onSnapshot(commentsQuery, async (snapshot) => {
+        // Fetch user data for each comment
+        const commentsWithProfiles = await Promise.all(
+          snapshot.docs.map(async (commentDoc) => {
+            const commentData = commentDoc.data()
+
+            // Fetch author photo from users collection
+            let authorPhotoURL = null
+            try {
+              const userDoc = await getDoc(doc(firestore, 'users', commentData.authorId))
+              if (userDoc.exists()) {
+                const userData = userDoc.data()
+                authorPhotoURL = userData.photoURL || null
+              }
+            } catch (err) {
+              console.error('Error loading comment author photo:', err)
+            }
+
+            return {
+              id: commentDoc.id,
+              ...commentData,
+              authorPhotoURL
+            } as VentComment
+          })
+        )
+
+        comments.value = commentsWithProfiles
       })
 
       // Subscribe to post updates (for real-time like count updates)
